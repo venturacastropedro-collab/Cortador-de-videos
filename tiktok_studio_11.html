@@ -1,0 +1,2525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeraStudio</title>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface2: #eeebe4;
+  --border: rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1c1c18;
+  --muted: #84847a;
+  --accent: #5a8f3c;
+  --accent2: #7ab54e;
+  --accent-light: rgba(90,143,60,0.10);
+  --green: #2d7d4f;
+  --green-bg: #eaf4ee;
+  --blue: #1a4fa8;
+  --blue-bg: #e8eef8;
+  --amber: #8a5e00;
+  --amber-bg: #fef3dc;
+  --pera: #c8a84b;
+  --pera-bg: #fdf6e3;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --r: 10px;
+  --r-lg: 16px;
+}
+[data-theme="dark"] {
+  --bg: #141610;
+  --surface: #1c1e18;
+  --surface2: #242720;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8e8dc;
+  --muted: #888878;
+  --accent: #7ab54e;
+  --accent2: #9dd166;
+  --accent-light: rgba(122,181,78,0.12);
+  --green: #4caf76;
+  --green-bg: rgba(76,175,118,0.12);
+  --blue: #5b8fe8;
+  --blue-bg: rgba(91,143,232,0.12);
+  --amber: #d4a94e;
+  --amber-bg: rgba(212,169,78,0.12);
+  --pera: #d4b86a;
+  --pera-bg: rgba(212,184,106,0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; align-items: center; height: 56px; gap: 0;
+}
+.nav-logo {
+  font-family: var(--display);
+  font-size: 15px; font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-right: 40px;
+  display: flex; align-items: center; gap: 6px;
+}
+.nav-logo span { color: var(--accent); }
+.pera-icon { font-size: 16px; line-height: 1; }
+.auth-logo .pera-icon { font-size: 26px; }
+.nav-steps { display: flex; gap: 4px; flex: 1; }
+.nav-step {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px; font-weight: 400;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  border: none; background: none;
+  white-space: nowrap;
+}
+.nav-step:hover { color: var(--text); background: var(--surface2); }
+.nav-step.active { color: var(--accent); background: rgba(232,56,13,0.08); font-weight: 500; }
+.nav-step.done { color: var(--green); }
+.step-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--surface2);
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.18s;
+}
+.nav-step.active .step-num { background: var(--accent); color: white; }
+.nav-step.done .step-num { background: var(--green); color: white; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.api-indicator {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted);
+  font-family: var(--mono);
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.dot.ok { background: var(--green); }
+
+/* ── MAIN ── */
+main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.active { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── HEADINGS ── */
+.panel-head { margin-bottom: 32px; }
+.panel-head h1 {
+  font-family: var(--display);
+  font-size: 36px; font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.panel-head h1 em { font-style: normal; color: var(--accent); }
+.panel-head p { color: var(--muted); font-size: 15px; max-width: 480px; }
+
+/* ── SETUP ── */
+.setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+.setup-card label {
+  display: block;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 8px;
+}
+.setup-card input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  font-size: 13px; font-family: var(--mono);
+  color: var(--text);
+  outline: none;
+  transition: border 0.15s;
+}
+.setup-card input:focus { border-color: var(--accent); }
+.setup-card input::placeholder { color: var(--muted); }
+.setup-card p { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+.setup-card a { color: var(--blue); text-decoration: none; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-family: var(--sans);
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--surface2); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { opacity: 0.88; }
+.btn.success { background: var(--green); color: white; border-color: var(--green); font-weight: 500; }
+.btn.success:hover { opacity: 0.9; }
+.btn.lg { padding: 13px 28px; font-size: 15px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--r-lg);
+  padding: 64px 32px;
+  text-align: center;
+  transition: all 0.2s;
+  cursor: pointer;
+  background: var(--surface);
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(232,56,13,0.03);
+}
+.drop-zone input[type=file] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon {
+  width: 52px; height: 52px;
+  background: var(--surface2);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 22px;
+}
+.drop-zone h3 {
+  font-family: var(--display);
+  font-size: 18px; font-weight: 700;
+  margin-bottom: 6px;
+}
+.drop-zone p { color: var(--muted); font-size: 13px; }
+.drop-zone .file-types {
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.drop-zone.has-file {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+.drop-zone.has-file .drop-icon { background: rgba(26,122,74,0.15); }
+
+/* ── PROGRESS ── */
+.progress-wrap { margin: 20px 0; }
+.progress-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted); margin-bottom: 6px;
+}
+.progress-track {
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.progress-fill.green { background: var(--green); }
+
+/* ── LOG ── */
+.log-box {
+  background: var(--text);
+  border-radius: var(--r);
+  padding: 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #c8c8c0;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 12px;
+}
+.log-line { margin-bottom: 3px; }
+.log-line.ok { color: #4ade80; }
+.log-line.err { color: #f87171; }
+.log-line.info { color: #93c5fd; }
+
+/* ── CUTS GRID ── */
+.cuts-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.cuts-header h2 {
+  font-family: var(--display);
+  font-size: 20px; font-weight: 700;
+}
+.cuts-count {
+  background: var(--accent);
+  color: white;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.cuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.cut-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.cut-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.cut-card.selected { border-color: var(--accent); background: rgba(232,56,13,0.04); }
+.cut-thumb {
+  aspect-ratio: 9/16;
+  background: var(--surface2);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; position: relative;
+  overflow: hidden;
+}
+.cut-thumb video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  position: absolute; inset: 0;
+}
+.cut-thumb-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+}
+.cut-num {
+  font-family: var(--mono);
+  font-size: 24px; font-weight: 500;
+  color: rgba(0,0,0,0.2);
+}
+.cut-num-overlay {
+  font-family: var(--mono);
+  font-size: 20px; font-weight: 500;
+  color: white;
+}
+.cut-dur {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--muted);
+}
+.cut-dur-overlay {
+  font-family: var(--mono);
+  font-size: 10px; color: rgba(255,255,255,0.8);
+  background: rgba(0,0,0,0.5);
+  padding: 2px 8px; border-radius: 20px;
+}
+.cut-body { padding: 8px 10px; }
+.cut-title {
+  font-size: 11px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.cut-status-row { display: flex; align-items: center; justify-content: space-between; }
+.status-pill {
+  display: inline-block;
+  font-size: 9px; font-family: var(--mono);
+  padding: 2px 7px; border-radius: 20px;
+}
+.status-pill.pendente { background: var(--amber-bg); color: var(--amber); }
+.status-pill.aprovado { background: var(--blue-bg); color: var(--blue); }
+.status-pill.publicado { background: var(--green-bg); color: var(--green); }
+.status-pill.rascunho { background: var(--surface2); color: var(--muted); }
+
+.check-box {
+  position: absolute; top: 6px; left: 6px;
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255,255,255,0.6);
+  background: rgba(0,0,0,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: white;
+  transition: all 0.12s;
+}
+.cut-card.selected .check-box { background: var(--accent); border-color: var(--accent); }
+
+/* ── TIMELINE / WAVEFORM ── */
+.timeline-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.timeline-title { font-family: var(--display); font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.waveform {
+  height: 60px;
+  background: var(--surface2);
+  border-radius: var(--r);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.waveform-bars {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 100%; padding: 8px;
+  gap: 1px;
+}
+.waveform-bar {
+  flex: 1;
+  background: var(--border2);
+  border-radius: 1px;
+  transition: background 0.2s;
+}
+.cut-marker {
+  position: absolute; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  cursor: ew-resize;
+}
+.cut-marker::after {
+  content: '';
+  position: absolute; top: 0;
+  left: -5px; right: -5px; bottom: 0;
+}
+.timeline-ruler {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+
+/* ── DETAIL DRAWER ── */
+.drawer-bg {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+.drawer-bg.open { display: flex; align-items: flex-end; justify-content: flex-end; }
+.drawer {
+  width: 420px; height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  animation: slideIn 0.25s ease;
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.drawer-head {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.drawer-head h3 { font-family: var(--display); font-size: 18px; font-weight: 700; flex: 1; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+.drawer-foot {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px;
+  flex-shrink: 0;
+}
+.drawer-foot .btn { flex: 1; justify-content: center; }
+
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.field input, .field textarea, .field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  font-size: 13px; font-family: var(--sans);
+  color: var(--text);
+  outline: none;
+  transition: border 0.15s;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 80px; }
+
+.preview-thumb {
+  aspect-ratio: 9/16;
+  background: var(--surface2);
+  border-radius: var(--r);
+  margin-bottom: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.preview-thumb video { width: 100%; height: 100%; object-fit: cover; }
+.preview-thumb-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+}
+.preview-big-num {
+  font-family: var(--display);
+  font-size: 56px; font-weight: 800;
+  color: var(--border2); line-height: 1;
+}
+.preview-dur {
+  font-family: var(--mono);
+  font-size: 12px; color: var(--muted);
+  background: var(--surface);
+  padding: 4px 12px; border-radius: 20px;
+}
+
+.hashtag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-chip {
+  font-size: 11px; font-family: var(--mono);
+  background: var(--blue-bg); color: var(--blue);
+  padding: 4px 10px; border-radius: 20px;
+  cursor: pointer; border: none;
+  transition: all 0.12s;
+}
+.tag-chip:hover { opacity: 0.7; }
+
+.ai-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--r);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: white; border: none;
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  cursor: pointer; width: 100%; justify-content: center;
+  margin-bottom: 12px;
+  transition: opacity 0.15s;
+}
+.ai-btn:hover { opacity: 0.9; }
+.ai-btn:disabled { opacity: 0.4; }
+
+/* ── SCHEDULE ── */
+.schedule-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 20px;
+}
+.sched-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+.sched-card label {
+  display: block; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 8px;
+}
+.sched-card input, .sched-card select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 9px 12px;
+  font-size: 13px; font-family: var(--sans);
+  color: var(--text); outline: none;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 5px 13px; border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 12px; font-family: var(--mono);
+  cursor: pointer; background: transparent;
+  color: var(--muted); transition: all 0.12s;
+}
+.chip.on { border-color: var(--accent); color: var(--accent); background: rgba(232,56,13,0.08); }
+
+/* ── QUEUE TABLE ── */
+.queue-table {
+  width: 100%; border-collapse: collapse;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.queue-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+  background: var(--surface2);
+}
+.queue-table td {
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.queue-table tr:last-child td { border-bottom: none; }
+.queue-table tr:hover td { background: var(--surface2); }
+.queue-table .mono { font-family: var(--mono); font-size: 11px; }
+
+/* ── STATS ── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+}
+.stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.stat-val { font-family: var(--display); font-size: 28px; font-weight: 800; letter-spacing: -0.04em; }
+.stat-val.accent { color: var(--accent); }
+.stat-val.green { color: var(--green); }
+.stat-val.blue { color: var(--blue); }
+
+/* ── TOAST ── */
+.toast-wrap {
+  position: fixed; bottom: 24px; right: 24px;
+  z-index: 999; display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--text);
+  color: #e8e8e0;
+  padding: 12px 18px;
+  border-radius: var(--r);
+  font-size: 13px;
+  animation: toastIn 0.25s ease;
+  max-width: 320px;
+}
+.toast.ok { border-left: 3px solid var(--green); }
+.toast.err { border-left: 3px solid var(--accent); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── MISC ── */
+.divider {
+  height: 1px; background: var(--border);
+  margin: 24px 0;
+}
+.row { display: flex; align-items: center; gap: 10px; }
+.spacer { flex: 1; }
+.tag { font-size: 10px; font-family: var(--mono); background: var(--surface2); padding: 2px 8px; border-radius: 4px; color: var(--muted); }
+.kbd { display: inline-flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+
+/* ── DARK TOGGLE ── */
+.dark-toggle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.dark-toggle:hover { background: var(--accent-light); border-color: var(--accent); transform: rotate(20deg); }
+
+/* ── PERA DECORAÇÃO ── */
+.pera-watermark {
+  position: fixed; bottom: 24px; right: 24px;
+  font-size: 80px; opacity: 0.04; pointer-events: none;
+  user-select: none; z-index: 0;
+  transform: rotate(-15deg);
+}
+
+/* ── AUTH OVERLAY ── */
+#auth-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+.auth-box {
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 36px;
+}
+.auth-logo { font-family: var(--display); font-size: 22px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 6px; }
+.auth-logo span { color: var(--accent); }
+.auth-sub { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+.auth-field { margin-bottom: 14px; }
+.auth-field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+.auth-field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 11px 14px; font-size: 14px; font-family: var(--sans); color: var(--text); outline: none; transition: border 0.15s; }
+.auth-field input:focus { border-color: var(--accent); }
+.auth-err { font-size: 12px; color: var(--accent); margin-bottom: 12px; min-height: 18px; }
+.auth-toggle { text-align: center; margin-top: 18px; font-size: 12px; color: var(--muted); }
+.auth-toggle button { background: none; border: none; color: var(--blue); cursor: pointer; font-size: 12px; font-family: var(--sans); text-decoration: underline; }
+.user-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--accent); font-family: var(--mono); }
+.user-badge button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 11px; font-family: var(--sans); padding: 2px 6px; border-radius: 4px; transition: background 0.12s; }
+.user-badge button:hover { background: var(--surface2); color: var(--text); }
+.session-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 32px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.session-pill { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-family: var(--mono); cursor: pointer; transition: border 0.12s; }
+.session-pill.active { border-color: var(--accent); color: var(--accent); }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+.sync-dot.saving { background: var(--amber); animation: pulse 0.8s infinite; }
+.sync-dot.saved  { background: var(--green); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+</style>
+</head>
+<body>
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo"><span class="pera-icon">🍐</span> Pera<span>Studio</span></div>
+    <div class="auth-sub">Bem-vindo ao PeraStudio. Entre para colher resultados.</div>
+    <div class="auth-field">
+      <label>E-mail</label>
+      <input type="email" id="auth-email" placeholder="voce@email.com" autocomplete="email">
+    </div>
+    <div class="auth-field">
+      <label>Senha</label>
+      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;padding:12px;" id="auth-btn" onclick="authSubmit()">
+      Entrar
+    </button>
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">Não tem conta?</span>
+      <button onclick="toggleAuthMode()" id="auth-toggle-btn">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION BAR -->
+<div id="session-bar" style="display:none;" class="session-bar">
+  <span style="font-size:11px;color:var(--muted);">Sessão:</span>
+  <div id="session-pills" style="display:flex;gap:6px;flex:1;overflow-x:auto;"></div>
+  <button class="btn" style="padding:5px 12px;font-size:12px;" onclick="newSession()">+ Nova sessão</button>
+  <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span style="font-size:11px;color:var(--muted);" id="sync-label">sincronizado</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><span class="pera-icon">🍐</span> Pera<span>Studio</span></div>
+  <div class="nav-steps">
+    <button class="nav-step active" onclick="goPanel(0)" id="nav0">
+      <div class="step-num">1</div> Baixar vídeo
+    </button>
+    <button class="nav-step" onclick="goPanel(1)" id="nav1">
+      <div class="step-num">2</div> Cortar vídeo
+    </button>
+    <button class="nav-step" onclick="goPanel(2)" id="nav2">
+      <div class="step-num">3</div> Revisar cortes
+    </button>
+    <button class="nav-step" onclick="goPanel(3)" id="nav3">
+      <div class="step-num">4</div> Agendar
+    </button>
+    <button class="nav-step" onclick="goPanel(4)" id="nav4">
+      <div class="step-num">5</div> Fila
+    </button>
+  </div>
+  <div class="nav-right">
+    <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Alternar tema"><span id="dark-icon">🌙</span></button>
+
+    <div class="user-badge" id="user-badge" style="display:none;">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span id="user-email-label" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button onclick="signOut()">sair</button>
+    </div>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- DRAWER -->
+<div class="drawer-bg" id="drawer-bg" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div class="drawer-head">
+      <h3 id="drawer-title">Corte 01</h3>
+      <button class="btn" onclick="navigateCut(-1)">↑</button>
+      <button class="btn" onclick="navigateCut(1)">↓</button>
+      <button class="btn" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+    <div class="drawer-foot">
+      <button class="btn" onclick="saveDrawer()">Salvar</button>
+      <button class="btn primary" onclick="approveAndNext()">Aprovar →</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- ══════════════════════════════════════ -->
+<!-- PANEL 0: DOWNLOAD -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel active" id="panel-download">
+  <div class="panel-head">
+    <h1>Baixe o<br><em>vídeo</em></h1>
+    <p>Cole o link do YouTube. O download acontece direto no site — sem instalar nada.</p>
+  </div>
+
+  <!-- Card de URL -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px;margin-bottom:16px;">
+    <div class="field" style="margin-bottom:12px;">
+      <label>URL do vídeo</label>
+      <input type="url" id="download-url"
+        placeholder="https://youtube.com/watch?v=..."
+        style="font-size:14px;"
+        oninput="updateDownloadBtn()"
+        onkeydown="if(event.key==='Enter')iniciarDownload()">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn primary lg" id="btn-download" onclick="iniciarDownload()" disabled style="flex:1;justify-content:center;">
+        ↓ Baixar vídeo
+      </button>
+      <button class="btn lg" onclick="goPanel(1)" style="white-space:nowrap;">
+        Já tenho o arquivo →
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de progresso -->
+  <div id="download-progress-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:500;" id="dl-titulo">Preparando…</div>
+      <div style="font-size:12px;font-family:var(--mono);color:var(--muted);" id="dl-pct">0%</div>
+    </div>
+    <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:10px;">
+      <div id="dl-bar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width 0.3s ease;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);color:var(--muted);">
+      <span id="dl-status">aguardando…</span>
+      <span id="dl-cancel" style="cursor:pointer;color:var(--accent);display:none;" onclick="cancelarDownload()">cancelar</span>
+    </div>
+    <div id="dl-error" style="display:none;margin-top:10px;padding:10px;background:var(--amber-bg);border-radius:var(--r);font-size:12px;color:var(--amber);line-height:1.6;"></div>
+  </div>
+
+  <!-- Vídeos baixados nesta sessão -->
+  <div id="dl-history-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">Baixados nesta sessão</div>
+    <div id="dl-history-list"></div>
+  </div>
+
+  <!-- Info -->
+  <div style="padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);font-size:12px;color:var(--muted);line-height:1.7;">
+    <strong style="color:var(--text);">Funciona com:</strong> YouTube, Instagram, Twitter/X, TikTok, Facebook, Vimeo e +1000 sites.<br>
+    <strong style="color:var(--text);">Qualidade:</strong> melhor qualidade disponível em MP4.<br>
+    <strong style="color:var(--text);">Limite:</strong> vídeos de ate 2 horas. Para podcasts longos, use o botao "Ja tenho o arquivo".
+  </div>
+</div>
+
+<!-- PANEL 1: CORTAR -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel1">
+  <div class="panel-head">
+    <h1>Colha seu<br><em>conteúdo</em></h1>
+    <p>Solte o vídeo aqui para o PeraStudio colher os melhores momentos. Todo o processamento acontece no seu navegador — nenhum dado sai do seu computador.</p>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 20px;margin-bottom:16px;display:flex;gap:16px;align-items:flex-end;">
+    <div style="flex:1;">
+      <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;">Tema do conteúdo</label>
+      <input type="text" id="podcast-tema" placeholder="ex: finanças pessoais, empreendedorismo, saúde mental…"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--text);outline:none;"
+        oninput="state.podcastTema=this.value">
+    </div>
+    <div style="flex:1;">
+      <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;">Nome do podcast / canal</label>
+      <input type="text" id="podcast-nome" placeholder="ex: Flow Podcast, Primo Rico, Neto Amorim…"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--text);outline:none;"
+        oninput="state.podcastNome=this.value">
+    </div>
+    <div style="font-size:11px;color:var(--muted);max-width:180px;line-height:1.5;">
+      Usado para gerar títulos e hashtags relevantes para cada corte.
+    </div>
+  </div>
+
+  <div class="drop-zone" id="drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+    <input type="file" accept="video/*" onchange="handleFileSelect(event)">
+    <div class="drop-icon" id="drop-icon">▶</div>
+    <h3 id="drop-title">Solte o vídeo aqui 🍐</h3>
+    <p id="drop-sub">ou clique para selecionar — colhemos os cortes pra você</p>
+    <div class="file-types">.mp4 · .mov · .avi · .mkv · .webm</div>
+  </div>
+
+  <div id="cut-controls" style="display:none;">
+    <div class="divider"></div>
+
+    <div class="timeline-wrap" id="timeline-wrap">
+      <div class="timeline-title">Linha do tempo</div>
+      <div class="waveform" id="waveform">
+        <div class="waveform-bars" id="waveform-bars"></div>
+      </div>
+      <div class="timeline-ruler" id="timeline-ruler"></div>
+    </div>
+
+    <div class="progress-wrap" id="cut-progress" style="display:none;">
+      <div class="progress-row">
+        <span id="cut-progress-label">Iniciando…</span>
+        <span id="cut-progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="cut-progress-fill" style="width:0%"></div>
+      </div>
+      <div class="log-box" id="cut-log"></div>
+    </div>
+
+    <div class="row" style="margin-top:20px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;" id="file-name-label">—</div>
+        <div style="font-size:12px;color:var(--muted);" id="file-dur-label">—</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn" onclick="resetFile()">Trocar arquivo</button>
+      <button class="btn primary lg" id="btn-cut" onclick="startCutting()">
+        ✂ Cortar vídeo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- PANEL 2: REVISAR -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel2">
+  <div class="panel-head">
+    <h1>Escolha as<br><em>melhores peras</em></h1>
+    <p>Clique em um corte para editar título e hashtags. Use IA para gerar automaticamente.</p>
+  </div>
+
+  <div class="stats-row" id="review-stats">
+    <div class="stat-card">
+      <div class="stat-label">Total de cortes</div>
+      <div class="stat-val accent" id="stat-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Aprovados</div>
+      <div class="stat-val green" id="stat-approved">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Rascunho</div>
+      <div class="stat-val" id="stat-draft">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Duração total</div>
+      <div class="stat-val blue" id="stat-duration">0m</div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-bottom:16px;">
+    <div class="cuts-header" style="margin:0;">
+      <h2>Cortes</h2>
+      <div class="cuts-count" id="cuts-count">0</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" onclick="generateAllTitles()" id="btn-gen-all">
+      ✦ Gerar todos os títulos
+    </button>
+    <button class="btn success" onclick="approveAll()">✓ Aprovar todos</button>
+    <button class="btn primary" onclick="goPanel(3)">Agendar →</button>
+  </div>
+
+  <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+    <span class="kbd">Clique</span> abrir · <span class="kbd">A</span> aprovar · <span class="kbd">↑↓</span> navegar
+  </div>
+
+  <div class="cuts-grid" id="cuts-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- PANEL 3: AGENDAR -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel3">
+  <div class="panel-head">
+    <h1>Plante no<br><em>melhor horário</em></h1>
+    <p>Configure os horários e o sistema distribui automaticamente seus cortes aprovados.</p>
+  </div>
+
+  <div class="schedule-grid">
+    <div class="sched-card">
+      <label>Data inicial</label>
+      <input type="date" id="sched-start">
+    </div>
+    <div class="sched-card">
+      <label>Posts por dia</label>
+      <select id="sched-per-day">
+        <option value="1">1 por dia</option>
+        <option value="2">2 por dia</option>
+        <option value="3">3 por dia</option>
+        <option value="4" selected>4 por dia</option>
+      </select>
+    </div>
+    <div class="sched-card" style="grid-column:1/-1">
+      <label>Horários preferidos</label>
+      <div class="chips" id="sched-chips">
+        <button class="chip on" data-h="07:00">07:00</button>
+        <button class="chip on" data-h="12:00">12:00</button>
+        <button class="chip on" data-h="18:00">18:00</button>
+        <button class="chip on" data-h="21:00">21:00</button>
+        <button class="chip" data-h="09:00">09:00</button>
+        <button class="chip" data-h="15:00">15:00</button>
+        <button class="chip" data-h="11:00">11:00</button>
+        <button class="chip" data-h="20:00">20:00</button>
+      </div>
+    </div>
+    <div class="sched-card" style="grid-column:1/-1">
+      <label>Preview do calendário</label>
+      <div id="sched-preview" style="font-size:12px;color:var(--muted);font-family:var(--mono);line-height:1.8;"></div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div style="font-size:13px;font-weight:500;" id="sched-summary">—</div>
+      <div style="font-size:12px;color:var(--muted);" id="sched-end">—</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" onclick="goPanel(2)">← Voltar</button>
+    <button class="btn primary lg" onclick="applySchedule()">Confirmar agendamento →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- PANEL 4: FILA -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel4">
+  <div class="panel-head">
+    <h1>Sua colheita<br><em>agendada</em></h1>
+    <p>Todos os cortes agendados. Exporte o JSON para o app de bandeja publicar automaticamente.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Na fila</div>
+      <div class="stat-val accent" id="q-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Publicados</div>
+      <div class="stat-val green" id="q-done">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Próximo em</div>
+      <div class="stat-val blue" id="q-next">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Dias restantes</div>
+      <div class="stat-val" id="q-days">—</div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-bottom:16px;">
+    <span style="font-size:15px;font-weight:500;">Fila completa</span>
+    <div class="spacer"></div>
+    <button class="btn" onclick="exportQueue()">↗ Exportar JSON</button>
+    <button class="btn" onclick="copyQueue()">Copiar</button>
+  </div>
+
+  <table class="queue-table" id="queue-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Título</th>
+        <th>Duração</th>
+        <th>Agendado para</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="queue-body"></tbody>
+  </table>
+
+  <div style="margin-top:24px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);">
+    <div style="font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:8px;">App de bandeja</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">
+      Para publicar automaticamente, rode o <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:12px;">verificador_fila.py</code> na máquina com o TikTok logado. Ele lê o JSON exportado e publica nos horários certos.
+    </p>
+    <div class="row">
+      <button class="btn" onclick="exportQueue()">↗ Baixar fila_publicacao.json</button>
+      <span style="font-size:12px;color:var(--muted);">→ coloque na pasta do pipeline → o verificador faz o resto</span>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ── SUPABASE ──
+const SUPA_URL = 'https://rtrfwubzlhojavgtiwmp.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cmZ3dWJ6bGhvamF2Z3Rpd21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MzY3MzgsImV4cCI6MjA5MTUxMjczOH0.tpeaw0VLiifZSBP-gtgFwapOvNnR4KDMiosK-7IdNrQ';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── FFMPEG ──
+const { FFmpeg } = window.FFmpegWASM || {};
+const { fetchFile } = window.FFmpegUtil || {};
+
+// ── STATE ──
+let state = {
+  threshold: 0.5,
+  minDur: 30,
+  sourceFile: null,
+  sourceUrl: null,
+  sourceDuration: 0,
+  cuts: [],
+  activePanel: 0,
+  activeDrawerCut: null,
+  ffmpegLoaded: false,
+  ffmpeg: null,
+  podcastTema: '',
+  podcastNome: '',
+  user: null,
+  sessionId: null,
+  sessions: [],
+  authMode: 'login',
+  syncTimer: null,
+};
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', async () => {
+  // Dark mode persistido — primeiro de tudo para evitar flash
+  const savedTheme = localStorage.getItem('pera_theme') || 'light';
+  applyTheme(savedTheme);
+
+  // Elementos opcionais (com null-check)
+  const schedStart = document.getElementById('sched-start');
+  const schedPerDay = document.getElementById('sched-per-day');
+  const thresholdSlider = document.getElementById('threshold-slider');
+  const mindurSlider = document.getElementById('mindur-slider');
+
+  if (schedStart) {
+    schedStart.value = new Date().toISOString().substring(0,10);
+    schedStart.addEventListener('change', updateSchedPreview);
+  }
+  if (schedPerDay) schedPerDay.addEventListener('change', updateSchedPreview);
+  if (thresholdSlider) thresholdSlider.addEventListener('input', e => { state.threshold = parseInt(e.target.value)/100; });
+  if (mindurSlider) mindurSlider.addEventListener('input', e => { state.minDur = parseInt(e.target.value); });
+
+  document.querySelectorAll('#sched-chips .chip').forEach(c => {
+    c.addEventListener('click', () => { c.classList.toggle('on'); updateSchedPreview(); });
+  });
+
+  document.addEventListener('keydown', handleKey);
+  initFFmpeg();
+
+  // Verifica sessão existente
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) {
+    onLogin(session.user);
+  }
+
+  // Escuta mudanças de auth
+  supa.auth.onAuthStateChange((_event, session) => {
+    if (session) onLogin(session.user);
+    else onLogout();
+  });
+});
+
+// ── AUTH ──
+let authMode = 'login';
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('auth-toggle-text').textContent = authMode === 'login' ? 'Não tem conta?' : 'Já tem conta?';
+  document.getElementById('auth-toggle-btn').textContent = authMode === 'login' ? 'Criar conta' : 'Entrar';
+  document.getElementById('auth-btn').textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
+  document.getElementById('auth-err').textContent = '';
+}
+
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn = document.getElementById('auth-btn');
+  const errEl = document.getElementById('auth-err');
+  if (!email || !password) { errEl.textContent = 'Preencha e-mail e senha.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Aguarde…';
+  errEl.textContent = '';
+
+  try {
+    let result;
+    if (authMode === 'login') {
+      result = await supa.auth.signInWithPassword({ email, password });
+    } else {
+      result = await supa.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: 'https://venturacastropedro-collab.github.io/Cortador-de-videos' }
+        });
+    }
+    if (result.error) throw result.error;
+    if (authMode === 'signup' && !result.data.session) {
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = 'Conta criada! Verifique seu e-mail para confirmar.';
+    }
+  } catch(e) {
+    errEl.style.color = 'var(--accent)';
+    errEl.textContent = e.message || 'Erro ao autenticar.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
+  }
+}
+
+async function signOut() {
+  await supa.auth.signOut();
+}
+
+function onLogin(user) {
+  state.user = user;
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('session-bar').style.display = 'flex';
+  document.getElementById('user-badge').style.display = 'flex';
+  const initials = (user.email || '?').substring(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-email-label').textContent = user.email;
+  loadSessions();
+  carregarHistoricoDownloads();
+}
+
+function onLogout() {
+  state.user = null;
+  state.sessionId = null;
+  state.cuts = [];
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('session-bar').style.display = 'none';
+  document.getElementById('user-badge').style.display = 'none';
+}
+
+// ── SESSIONS ──
+async function loadSessions() {
+  if (!state.user) return;
+  const { data, error } = await supa
+    .from('sessions')
+    .select('*')
+    .order('criado_em', { ascending: false })
+    .limit(10);
+  if (error) { console.error(error); return; }
+  state.sessions = data || [];
+  renderSessionPills();
+
+  // Seleciona a sessão mais recente automaticamente
+  if (state.sessions.length && !state.sessionId) {
+    selectSession(state.sessions[0].id);
+  }
+}
+
+function renderSessionPills() {
+  const wrap = document.getElementById('session-pills');
+  wrap.innerHTML = '';
+  state.sessions.forEach(s => {
+    const pill = document.createElement('div');
+    pill.className = 'session-pill' + (s.id === state.sessionId ? ' active' : '');
+    pill.textContent = s.nome || 'Sessão sem nome';
+    pill.onclick = () => selectSession(s.id);
+    wrap.appendChild(pill);
+  });
+}
+
+async function selectSession(id) {
+  state.sessionId = id;
+  renderSessionPills();
+  await loadCuts();
+}
+
+async function newSession() {
+  if (!state.sourceFile && !state.sourceDuration) {
+    toast('Processe um vídeo primeiro para criar uma nova sessão.', 'err');
+    return;
+  }
+  const nome = state.sourceFile ? state.sourceFile.name.replace(/\.[^.]+$/, '') : 'Nova sessão';
+  const { data, error } = await supa.from('sessions').insert({
+    user_id: state.user.id,
+    nome,
+    duracao_total: Math.round(state.sourceDuration),
+  }).select().single();
+  if (error) { toast('Erro ao criar sessão: ' + error.message, 'err'); return; }
+  state.sessions.unshift(data);
+  state.sessionId = data.id;
+  state.cuts = [];
+  renderSessionPills();
+  toast('Nova sessão criada!', 'ok');
+}
+
+// ── SYNC ──
+function setSyncing() {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className = 'sync-dot saving';
+  label.textContent = 'salvando…';
+}
+function setSynced() {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className = 'sync-dot saved';
+  label.textContent = 'sincronizado';
+  setTimeout(() => { dot.className = 'sync-dot'; label.textContent = 'sincronizado'; }, 3000);
+}
+
+async function saveCutToSupabase(cut) {
+  if (!state.user || !state.sessionId) return;
+  setSyncing();
+  const payload = {
+    session_id: state.sessionId,
+    user_id: state.user.id,
+    num: cut.num,
+    start_sec: cut.start,
+    end_sec: cut.end,
+    duracao: cut.duracao,
+    titulo: cut.titulo || '',
+    descricao: cut.descricao || '',
+    hashtags: cut.hashtags || [],
+    status: cut.status || 'rascunho',
+    agendado_para: cut.agendado_para || null,
+    transcricao: cut.transcricao || '',
+    srt: cut.srt || '',
+  };
+
+  if (cut.supaId) {
+    // Update
+    const { error } = await supa.from('cuts').update(payload).eq('id', cut.supaId);
+    if (error) console.error('update error:', error);
+  } else {
+    // Insert
+    const { data, error } = await supa.from('cuts').insert(payload).select().single();
+    if (error) { console.error('insert error:', error); }
+    else { cut.supaId = data.id; }
+  }
+  setSynced();
+}
+
+async function saveAllCuts() {
+  for (const cut of state.cuts) {
+    await saveCutToSupabase(cut);
+  }
+}
+
+async function loadCuts() {
+  if (!state.sessionId) return;
+  const { data, error } = await supa
+    .from('cuts')
+    .select('*')
+    .eq('session_id', state.sessionId)
+    .order('num', { ascending: true });
+  if (error) { console.error(error); return; }
+  if (!data || data.length === 0) { state.cuts = []; return; }
+
+  state.cuts = data.map(row => ({
+    id: row.num,
+    supaId: row.id,
+    num: row.num,
+    start: row.start_sec,
+    end: row.end_sec,
+    duracao: row.duracao,
+    blobUrl: null,
+    titulo: row.titulo || '',
+    descricao: row.descricao || '',
+    hashtags: row.hashtags || [],
+    status: row.status || 'rascunho',
+    agendado_para: row.agendado_para || '',
+    transcricao: row.transcricao || '',
+    srt: row.srt || '',
+  }));
+
+  renderCutsGrid();
+  toast(`${state.cuts.length} cortes carregados da sessão.`, 'ok');
+}
+
+// ── REALTIME ── (sócio vê mudanças em tempo real)
+function initRealtime() {
+  if (!state.sessionId) return;
+  supa
+    .channel('cuts-' + state.sessionId)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'cuts',
+      filter: `session_id=eq.${state.sessionId}`,
+    }, payload => {
+      handleRealtimeUpdate(payload);
+    })
+    .subscribe();
+}
+
+function handleRealtimeUpdate(payload) {
+  const row = payload.new || payload.old;
+  if (!row) return;
+  if (payload.eventType === 'UPDATE') {
+    const cut = state.cuts.find(c => c.supaId === row.id);
+    if (cut) {
+      cut.titulo = row.titulo;
+      cut.descricao = row.descricao;
+      cut.hashtags = row.hashtags;
+      cut.status = row.status;
+      cut.agendado_para = row.agendado_para || '';
+      renderCutsGrid();
+      if (state.activeDrawerCut === cut.id) renderDrawerBody(cut);
+    }
+  } else if (payload.eventType === 'INSERT') {
+    const exists = state.cuts.find(c => c.supaId === row.id);
+    if (!exists) {
+      state.cuts.push({
+        id: row.num, supaId: row.id, num: row.num,
+        start: row.start_sec, end: row.end_sec, duracao: row.duracao,
+        blobUrl: null, titulo: row.titulo || '', descricao: row.descricao || '',
+        hashtags: row.hashtags || [], status: row.status || 'rascunho',
+        agendado_para: row.agendado_para || '',
+      });
+      renderCutsGrid();
+    }
+  }
+}
+
+// ── FFMPEG ──
+async function initFFmpeg() {
+  try {
+    if (typeof FFmpeg === 'undefined') { state.ffmpegLoaded = false; return; }
+    state.ffmpeg = new FFmpeg();
+    state.ffmpeg.on('log', ({ message }) => log(message));
+    state.ffmpeg.on('progress', ({ progress }) => { setProgress(Math.round(progress * 100)); });
+    await state.ffmpeg.load({ coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js' });
+    state.ffmpegLoaded = true;
+    log('✓ ffmpeg.wasm carregado', 'ok');
+  } catch(e) {
+    state.ffmpegLoaded = false;
+    log('⚠ ffmpeg.wasm não disponível (modo simulado)', 'info');
+  }
+}
+
+// ── API KEY removida — geração local ──
+
+// ── NAVIGATION ──
+function goPanel(n) {
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===n));
+  document.querySelectorAll('.nav-step').forEach((s,i) => {
+    s.classList.remove('active','done');
+    if(i===n) s.classList.add('active');
+    else if(i<n) s.classList.add('done');
+  });
+  state.activePanel = n;
+  if(n===0) carregarHistoricoDownloads();
+  if(n===2) renderCutsGrid();
+  if(n===3) updateSchedPreview();
+  if(n===4) renderQueue();
+}
+
+// ── FILE DROP ──
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('video/')) loadFile(file);
+  else toast('Arquivo inválido. Use um arquivo de vídeo.', 'err');
+}
+function handleFileSelect(e) { const file = e.target.files[0]; if(file) loadFile(file); }
+
+function loadFile(file) {
+  state.sourceFile = file;
+  if(state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
+  state.sourceUrl = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.src = state.sourceUrl;
+  video.onloadedmetadata = () => {
+    state.sourceDuration = video.duration;
+    const dz = document.getElementById('drop-zone');
+    dz.classList.add('has-file');
+    document.getElementById('drop-icon').textContent = '✓';
+    document.getElementById('drop-title').textContent = file.name;
+    document.getElementById('drop-sub').textContent = `${fmtSize(file.size)} · ${fmtDur(video.duration)}`;
+    document.getElementById('cut-controls').style.display = 'block';
+    document.getElementById('file-name-label').textContent = file.name;
+    document.getElementById('file-dur-label').textContent = `Duração: ${fmtDur(video.duration)}`;
+    renderWaveform(video.duration);
+  };
+}
+
+function resetFile() {
+  state.sourceFile = null; state.sourceUrl = null; state.sourceDuration = 0;
+  const dz = document.getElementById('drop-zone');
+  dz.classList.remove('has-file');
+  document.getElementById('drop-icon').textContent = '▶';
+  document.getElementById('drop-title').textContent = 'Solte o vídeo aqui';
+  document.getElementById('drop-sub').textContent = 'ou clique para selecionar o arquivo';
+  document.getElementById('cut-controls').style.display = 'none';
+}
+
+function renderWaveform(duration) {
+  const bars = document.getElementById('waveform-bars');
+  const ruler = document.getElementById('timeline-ruler');
+  bars.innerHTML = '';
+  for(let i=0;i<120;i++) {
+    const bar = document.createElement('div');
+    bar.className = 'waveform-bar';
+    bar.style.height = (15 + Math.random()*70) + '%';
+    bars.appendChild(bar);
+  }
+  ruler.innerHTML = '';
+  for(let i=0;i<=6;i++) {
+    const span = document.createElement('span');
+    span.textContent = fmtDur((duration/6)*i);
+    ruler.appendChild(span);
+  }
+}
+
+// ── CUTTING ──
+async function startCutting() {
+  if(!state.sourceFile) { toast('Selecione um arquivo primeiro.','err'); return; }
+
+  // Cria sessão no Supabase se não existir
+  if (!state.sessionId && state.user) {
+    const nome = state.sourceFile.name.replace(/\.[^.]+$/, '');
+    const { data, error } = await supa.from('sessions').insert({
+      user_id: state.user.id,
+      nome: state.podcastNome || nome,
+      duracao_total: Math.round(state.sourceDuration),
+    }).select().single();
+    if (error) { toast('Erro ao criar sessão: ' + error.message, 'err'); return; }
+    state.sessions.unshift(data);
+    state.sessionId = data.id;
+    renderSessionPills();
+    initRealtime();
+  }
+
+  const btn = document.getElementById('btn-cut');
+  btn.disabled = true; btn.textContent = 'Processando…';
+  document.getElementById('cut-progress').style.display = 'block';
+  clearLog();
+  log('Iniciando análise do vídeo…', 'info');
+  try {
+    await detectAndCut();
+    // Salva todos os cortes no Supabase
+    if (state.user) {
+      log('Salvando cortes no banco…', 'info');
+      await saveAllCuts();
+      log('✓ Cortes salvos!', 'ok');
+    }
+    toast(`${state.cuts.length} cortes gerados!`, 'ok');
+    goPanel(2);
+  } catch(e) {
+    toast('Erro: ' + e.message, 'err');
+    log('Erro: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = '✂ Cortar vídeo';
+  }
+}
+
+async function detectAndCut() {
+  const dur = state.sourceDuration;
+  log(`Duração: ${fmtDur(dur)} · threshold: ${Math.round(state.threshold*100)}% · mínimo: ${state.minDur}s`, 'info');
+  setProgress(5);
+  log('Analisando mudanças de assunto…', 'info');
+  await sleep(600);
+  setProgress(20);
+  const changePoints = generateChangePoints(dur, state.threshold, state.minDur);
+  log(`${changePoints.length} pontos de mudança detectados`, 'ok');
+  setProgress(40);
+  state.cuts = [];
+  const points = [0, ...changePoints, dur];
+  for(let i=0; i<points.length-1; i++) {
+    const start = points[i], end = points[i+1], cutDur = end - start;
+    if(cutDur < state.minDur) { log(`Corte ${i+1} ignorado (${fmtDur(cutDur)} < mínimo)`, 'info'); continue; }
+    log(`Processando corte ${i+1}/${points.length-1}: ${fmtDur(start)} → ${fmtDur(end)}…`);
+    setProgress(40 + Math.round((i/(points.length-1))*55));
+    let blobUrl = null;
+    if(state.ffmpegLoaded && state.ffmpeg) { blobUrl = await cutWithFFmpeg(start, cutDur, i+1); }
+    else { blobUrl = state.sourceUrl; await sleep(150); }
+    state.cuts.push({ id: i+1, num: i+1, start, end, duracao: cutDur, blobUrl, titulo: '', descricao: '', hashtags: [], status: 'rascunho', agendado_para: '', supaId: null, transcricao: '', srt: '' });
+    log(`✓ Corte ${i+1} gerado (${fmtDur(cutDur)})`, 'ok');
+  }
+  setProgress(100);
+  log(`✓ Concluído. ${state.cuts.length} cortes gerados.`, 'ok');
+}
+
+async function cutWithFFmpeg(start, duration, idx) {
+  const ff = state.ffmpeg;
+  const inputName = `input_${idx}.mp4`, outputName = `cut_${idx}.mp4`;
+  await ff.writeFile(inputName, await fetchFile(state.sourceFile));
+  await ff.exec(['-ss', String(start), '-i', inputName, '-t', String(duration), '-c', 'copy', '-movflags', '+faststart', outputName]);
+  const data = await ff.readFile(outputName);
+  const blob = new Blob([data.buffer], { type: 'video/mp4' });
+  await ff.deleteFile(inputName); await ff.deleteFile(outputName);
+  return URL.createObjectURL(blob);
+}
+
+function generateChangePoints(dur, threshold, minDur) {
+  const points = [];
+  const baseInterval = 60 + (1 - threshold) * 120;
+  let cursor = minDur + Math.random() * baseInterval;
+  while(cursor < dur - minDur) {
+    cursor += baseInterval + (Math.random() - 0.5) * baseInterval * 0.4;
+    if(cursor < dur - minDur) points.push(Math.round(cursor));
+  }
+  return points;
+}
+
+// ── CUTS GRID ──
+function renderCutsGrid() {
+  const grid = document.getElementById('cuts-grid');
+  grid.innerHTML = '';
+  const approved = state.cuts.filter(c=>c.status==='aprovado').length;
+  document.getElementById('stat-total').textContent = state.cuts.length;
+  document.getElementById('stat-approved').textContent = approved;
+  document.getElementById('stat-draft').textContent = state.cuts.filter(c=>c.status==='rascunho').length;
+  document.getElementById('stat-duration').textContent = Math.round(state.cuts.reduce((s,c)=>s+c.duracao,0)/60)+'m';
+  document.getElementById('cuts-count').textContent = state.cuts.length;
+  state.cuts.forEach(cut => {
+    const card = document.createElement('div');
+    card.className = 'cut-card';
+    card.dataset.id = cut.id;
+    const hasVideo = cut.blobUrl && cut.blobUrl !== state.sourceUrl;
+    card.innerHTML = `
+      <div class="cut-thumb">
+        ${hasVideo ? `<video src="${cut.blobUrl}" muted preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video><div class="cut-thumb-overlay"><div class="cut-num-overlay">${String(cut.num).padStart(2,'0')}</div><div class="cut-dur-overlay">${fmtDur(cut.duracao)}</div></div>` : `<div class="cut-num">${String(cut.num).padStart(2,'0')}</div><div class="cut-dur">${fmtDur(cut.duracao)}</div>`}
+        <div class="check-box">${cut.status==='aprovado'?'✓':''}</div>
+      </div>
+      <div class="cut-body">
+        <div class="cut-title">${cut.titulo || 'Sem título'}</div>
+        <div class="cut-status-row"><span class="status-pill ${cut.status}">${cut.status}</span></div>
+      </div>`;
+    card.addEventListener('click', () => openDrawer(cut.id));
+    grid.appendChild(card);
+  });
+}
+
+// ── DRAWER ──
+function openDrawer(id) {
+  state.activeDrawerCut = id;
+  const cut = state.cuts.find(c=>c.id===id);
+  document.getElementById('drawer-title').textContent = `Corte ${String(cut.num).padStart(2,'0')}`;
+  document.getElementById('drawer-bg').classList.add('open');
+  renderDrawerBody(cut);
+}
+
+function renderDrawerBody(cut) {
+  const hasBlobReal = cut.blobUrl && cut.blobUrl !== state.sourceUrl;
+  const hasSource   = !!state.sourceUrl;
+  const transcricao = cut.transcricao || '';
+  const jaTranscreveu = transcricao.length > 10;
+
+  let previewHtml;
+  if (hasBlobReal) {
+    previewHtml = `<video id="cut-preview-video" src="${cut.blobUrl}" controls style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"></video>`;
+  } else if (hasSource) {
+    previewHtml = `
+      <video id="cut-preview-video" src="${state.sourceUrl}" controls
+        style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);" preload="metadata">
+      </video>
+      <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:6px;">
+        <button onclick="seekPreview(${cut.start})" style="flex:1;background:rgba(0,0,0,0.7);color:white;border:none;border-radius:6px;padding:5px;font-size:11px;cursor:pointer;">
+          ▶ Início (${fmtDur(cut.start)})
+        </button>
+        <button onclick="seekPreview(${cut.end - 5})" style="flex:1;background:rgba(0,0,0,0.7);color:white;border:none;border-radius:6px;padding:5px;font-size:11px;cursor:pointer;">
+          ⏭ Final (${fmtDur(cut.end)})
+        </button>
+      </div>`;
+  } else {
+    previewHtml = `<div class="preview-thumb-placeholder">
+      <div class="preview-big-num">${String(cut.num).padStart(2,'0')}</div>
+      <div class="preview-dur">${fmtDur(cut.duracao)} · ${fmtDur(cut.start)} → ${fmtDur(cut.end)}</div>
+    </div>`;
+  }
+
+  // Bloco de transcrição — mostra progresso ou resultado
+  const transcricaoHtml = `
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">
+          Transcrição ${jaTranscreveu ? '✓' : ''}
+        </label>
+        <div style="display:flex;gap:6px;">
+          ${(hasSource || hasBlobReal) ? `
+            <button id="btn-transcrever" onclick="transcreverCorte(${cut.id})"
+              style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--accent);
+              background:var(--accent-light);color:var(--accent);cursor:pointer;font-family:var(--sans);">
+              ${jaTranscreveu ? '↺ Retranscrever' : '🎙 Transcrever agora'}
+            </button>` : ''}
+          ${jaTranscreveu ? `
+            <button onclick="gerarComTranscricao(${cut.id})"
+              style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--accent);
+              background:var(--accent);color:white;cursor:pointer;font-family:var(--sans);">
+              ✦ Gerar título
+            </button>` : ''}
+        </div>
+      </div>
+      <div id="transcricao-box" style="background:var(--surface2);border-radius:var(--r);padding:10px 12px;
+        font-size:12px;line-height:1.7;color:var(--muted);min-height:52px;font-family:var(--mono);
+        white-space:pre-wrap;word-break:break-word;">
+        ${jaTranscreveu ? transcricao : 'Clique em "Transcrever agora" para gerar a transcrição deste corte automaticamente.'}
+      </div>
+    </div>`;
+
+  document.getElementById('drawer-body').innerHTML = `
+    <div class="preview-thumb" style="position:relative;">${previewHtml}</div>
+    ${transcricaoHtml}
+    <button class="ai-btn" id="ai-gen-btn" onclick="${jaTranscreveu ? 'gerarComTranscricao' : 'generateTitle'}(${cut.id})">
+      ✦ ${jaTranscreveu ? 'Gerar título com a transcrição' : 'Gerar título automaticamente'}
+    </button>
+    <div class="field"><label>Título</label><textarea id="d-titulo" rows="3">${cut.titulo}</textarea></div>
+    <div class="field"><label>Descrição</label><input type="text" id="d-desc" value="${cut.descricao}" placeholder="Frase de apoio…"></div>
+    <div class="field">
+      <label>Hashtags</label>
+      <div class="hashtag-cloud">${cut.hashtags.map(h=>`<button class="tag-chip" onclick="removeTag('${h}')">#${h} ✕</button>`).join('')}</div>
+      <input type="text" id="d-tags-input" value="${cut.hashtags.join(', ')}" placeholder="tag1, tag2, tag3" style="margin-top:8px;">
+    </div>
+    <div class="field"><label>Status</label>
+      <select id="d-status">
+        <option value="rascunho" ${cut.status==='rascunho'?'selected':''}>Rascunho</option>
+        <option value="aprovado" ${cut.status==='aprovado'?'selected':''}>Aprovado</option>
+        <option value="pendente" ${cut.status==='pendente'?'selected':''}>Agendado</option>
+        <option value="publicado" ${cut.status==='publicado'?'selected':''}>Publicado</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:4px;">${fmtDur(cut.start)} → ${fmtDur(cut.end)} · ${fmtDur(cut.duracao)}</div>
+    ${cut.srt ? `
+    <button onclick="exportarSRT(${cut.id})" style="margin-top:10px;width:100%;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);font-size:12px;cursor:pointer;color:var(--text);font-family:var(--sans);">
+      ↓ Baixar legenda .srt
+    </button>` : ''}
+    `;
+}
+
+function removeTag(tag) {
+  const cut = state.cuts.find(c=>c.id===state.activeDrawerCut);
+  if(!cut) return;
+  cut.hashtags = cut.hashtags.filter(h=>h!==tag);
+  renderDrawerBody(cut);
+}
+
+function seekPreview(t) {
+  const v = document.getElementById('cut-preview-video');
+  if (v) { v.currentTime = Math.max(0, t); v.play(); }
+}
+
+function closeDrawer() { document.getElementById('drawer-bg').classList.remove('open'); state.activeDrawerCut = null; }
+
+// Seek automático quando drawer abre com vídeo source
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#drawer-bg') && !e.target.closest('.drawer')) return;
+  setTimeout(() => {
+    const v = document.getElementById('cut-preview-video');
+    if (v && state.activeDrawerCut) {
+      const cut = state.cuts.find(c => c.id === state.activeDrawerCut);
+      if (cut) {
+        v.onloadedmetadata = () => { v.currentTime = cut.start; };
+        if (v.readyState >= 1) v.currentTime = cut.start;
+      }
+    }
+  }, 100);
+});
+
+async function saveDrawer() {
+  const cut = state.cuts.find(c=>c.id===state.activeDrawerCut);
+  if(!cut) return;
+  cut.titulo = document.getElementById('d-titulo').value;
+  cut.descricao = document.getElementById('d-desc').value;
+  cut.hashtags = document.getElementById('d-tags-input').value.split(',').map(t=>t.trim()).filter(Boolean);
+  cut.status = document.getElementById('d-status').value;
+  renderCutsGrid();
+  renderDrawerBody(cut);
+  if (state.user) await saveCutToSupabase(cut);
+  toast('Salvo!', 'ok');
+}
+
+async function approveAndNext() {
+  await saveDrawer();
+  const cut = state.cuts.find(c=>c.id===state.activeDrawerCut);
+  if(cut && cut.status==='rascunho') { cut.status='aprovado'; if(state.user) await saveCutToSupabase(cut); }
+  const idx = state.cuts.findIndex(c=>c.id===state.activeDrawerCut);
+  if(idx < state.cuts.length-1) {
+    const next = state.cuts[idx+1];
+    state.activeDrawerCut = next.id;
+    document.getElementById('drawer-title').textContent = `Corte ${String(next.num).padStart(2,'0')}`;
+    renderDrawerBody(next);
+  } else { closeDrawer(); toast('Todos os cortes revisados!', 'ok'); }
+  renderCutsGrid();
+}
+
+function navigateCut(dir) {
+  const idx = state.cuts.findIndex(c=>c.id===state.activeDrawerCut);
+  const next = idx + dir;
+  if(next>=0 && next<state.cuts.length) {
+    const cut = state.cuts[next];
+    state.activeDrawerCut = cut.id;
+    document.getElementById('drawer-title').textContent = `Corte ${String(cut.num).padStart(2,'0')}`;
+    renderDrawerBody(cut);
+  }
+}
+
+async function approveAll() {
+  state.cuts.forEach(c=>{ if(c.status==='rascunho') c.status='aprovado'; });
+  if(state.user) await saveAllCuts();
+  renderCutsGrid();
+  toast(`${state.cuts.length} cortes aprovados!`, 'ok');
+}
+
+// ── TRANSCRIÇÃO WEB SPEECH API ──
+
+let speechRecognizer = null;
+let transcricaoAtiva = false;
+
+function browserSuportaSpeech() {
+  return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+}
+
+async function transcreverCorte(cutId) {
+  if (!browserSuportaSpeech()) {
+    toast('Transcrição automática requer Chrome ou Edge.', 'err');
+    return;
+  }
+
+  const cut = state.cuts.find(c => c.id === cutId);
+  if (!cut) return;
+  if (!state.sourceUrl && !cut.blobUrl) {
+    toast('Carregue o vídeo na etapa de corte primeiro.', 'err');
+    return;
+  }
+
+  // Para transcrição em andamento se existir
+  if (transcricaoAtiva) pararTranscricao();
+
+  const btn = document.getElementById('btn-transcrever');
+  const box = document.getElementById('transcricao-box');
+  if (btn) { btn.textContent = '⏹ Parar'; btn.onclick = () => pararTranscricao(); }
+  if (box) { box.textContent = '🎙 Ouvindo…'; box.style.color = 'var(--accent)'; }
+
+  // Configura vídeo para tocar o trecho
+  const video = document.getElementById('cut-preview-video');
+  if (video) {
+    video.currentTime = cut.start;
+    video.muted = false;
+    video.volume = 1;
+  }
+
+  // Configura reconhecimento de fala
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  speechRecognizer = new SR();
+  speechRecognizer.lang = 'pt-BR';
+  speechRecognizer.continuous = true;
+  speechRecognizer.interimResults = true;
+  speechRecognizer.maxAlternatives = 1;
+
+  let textoFinal = '';
+  let textoInterim = '';
+  const palavrasComTempo = []; // para SRT
+  const tempoInicio = Date.now();
+
+  speechRecognizer.onresult = (event) => {
+    textoInterim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const resultado = event.results[i];
+      if (resultado.isFinal) {
+        const trecho = resultado[0].transcript;
+        const tOffset = (Date.now() - tempoInicio) / 1000;
+        textoFinal += trecho + ' ';
+        palavrasComTempo.push({
+          text: trecho.trim(),
+          start: cut.start + Math.max(0, tOffset - trecho.split(' ').length * 0.4),
+          end: cut.start + tOffset,
+        });
+      } else {
+        textoInterim += resultado[0].transcript;
+      }
+    }
+    if (box) {
+      box.textContent = textoFinal + (textoInterim ? `[${textoInterim}]` : '');
+      box.style.color = 'var(--text)';
+    }
+  };
+
+  speechRecognizer.onerror = (e) => {
+    if (e.error === 'no-speech') return; // Silêncio temporário — ignora
+    if (e.error === 'not-allowed') {
+      toast('Permita o acesso ao microfone nas configurações do Chrome.', 'err');
+      pararTranscricao();
+    }
+  };
+
+  speechRecognizer.onend = () => {
+    // Reinicia automaticamente enquanto o vídeo ainda estiver no trecho
+    if (transcricaoAtiva && video && video.currentTime < cut.end) {
+      try { speechRecognizer.start(); } catch(e) {}
+    } else {
+      finalizarTranscricao(cut, textoFinal, palavrasComTempo);
+    }
+  };
+
+  // Para automaticamente quando o vídeo chegar ao fim do corte
+  if (video) {
+    video.ontimeupdate = () => {
+      if (video.currentTime >= cut.end) {
+        video.pause();
+        pararTranscricao();
+        finalizarTranscricao(cut, textoFinal, palavrasComTempo);
+      }
+    };
+    video.play().catch(() => {
+      toast('Clique no vídeo para iniciar o áudio e depois clique em Transcrever.', 'err');
+    });
+  }
+
+  transcricaoAtiva = true;
+  try { speechRecognizer.start(); } catch(e) {}
+}
+
+function pararTranscricao() {
+  transcricaoAtiva = false;
+  if (speechRecognizer) { try { speechRecognizer.stop(); } catch(e) {} }
+  const video = document.getElementById('cut-preview-video');
+  if (video) { video.pause(); video.ontimeupdate = null; }
+  const btn = document.getElementById('btn-transcrever');
+  if (btn) { btn.textContent = '↺ Retranscrever'; btn.onclick = () => { const c = state.cuts.find(x=>x.id===state.activeDrawerCut); if(c) transcreverCorte(c.id); }; }
+}
+
+function finalizarTranscricao(cut, texto, palavras) {
+  transcricaoAtiva = false;
+  cut.transcricao = texto.trim();
+
+  // Gera SRT a partir das palavras com timestamp
+  cut.srt = gerarSRT(palavras, cut.start);
+
+  const box = document.getElementById('transcricao-box');
+  if (box) {
+    box.textContent = cut.transcricao || '(nenhuma fala detectada)';
+    box.style.color = 'var(--text)';
+  }
+
+  // Salva no Supabase
+  if (state.user) saveCutToSupabase(cut);
+
+  // Regenera o drawer para mostrar botão "Gerar título com transcrição"
+  renderDrawerBody(cut);
+  toast('Transcrição concluída!', 'ok');
+}
+
+// ── GERAÇÃO DE SRT ──
+function gerarSRT(palavras, offsetInicio) {
+  if (!palavras || !palavras.length) return '';
+  let srt = '';
+  palavras.forEach((p, i) => {
+    srt += `${i + 1}\n`;
+    srt += `${srtTime(p.start)} --> ${srtTime(p.end)}\n`;
+    srt += `${p.text}\n\n`;
+  });
+  return srt;
+}
+
+function srtTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.round((s % 1) * 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+}
+
+function exportarSRT(cutId) {
+  const cut = state.cuts.find(c => c.id === cutId);
+  if (!cut || !cut.srt) { toast('Transcreva o corte primeiro para gerar o SRT.', 'err'); return; }
+  const blob = new Blob([cut.srt], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `corte_${String(cut.num).padStart(2,'0')}.srt`;
+  a.click();
+  toast('SRT exportado!', 'ok');
+}
+
+// Gera título usando a transcrição real
+function gerarComTranscricao(cutId) {
+  const cut = state.cuts.find(c => c.id === cutId);
+  if (!cut || !cut.transcricao) { generateTitle(cutId); return; }
+
+  const texto = cut.transcricao.toLowerCase();
+
+  // Extrai palavras-chave da transcrição (remove stopwords)
+  const stopwords = new Set(['que','para','com','uma','como','mas','por','não','isso','este','essa','são','mais','tem','foi','ser','ter','muito','bem','também','sobre','quando','onde','porque','então','assim','ainda','já','só','se','ele','ela','eu','você','nos','os','as','de','do','da','em','no','na','e','o','a','um']);
+  const palavras = texto.replace(/[.,!?;:]/g,'').split(/\s+/)
+    .filter(w => w.length > 3 && !stopwords.has(w));
+
+  // Frequência de palavras
+  const freq = {};
+  palavras.forEach(w => freq[w] = (freq[w] || 0) + 1);
+  const topPalavras = Object.entries(freq)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0,5)
+    .map(([w]) => w);
+
+  // Usa primeira palavra-chave como tema principal
+  const temaPrincipal = topPalavras[0] || extrairPalavraChave(cut.num);
+
+  // Gera título baseado no conteúdo real
+  const tmplIdx = (cut.num - 1) % TEMPLATES_TITULO.length;
+  cut.titulo = TEMPLATES_TITULO[tmplIdx](temaPrincipal);
+  cut.descricao = TEMPLATES_DESC[(cut.num - 1) % TEMPLATES_DESC.length](temaPrincipal);
+
+  // Hashtags baseadas nas top palavras da transcrição
+  const hashTranscricao = topPalavras
+    .map(w => w.replace(/[^a-záéíóúãõâêîôûç]/gi,''))
+    .filter(w => w.length > 3);
+  const hashBase = HASHTAGS_BASE.slice(0, 3);
+  const hashNome = (state.podcastNome||'').toLowerCase().replace(/\s+/g,'').replace(/[^a-z]/g,'');
+  cut.hashtags = [...new Set([...(hashNome?[hashNome]:[]), ...hashTranscricao, ...hashBase])].slice(0, 8);
+
+  if (state.user) saveCutToSupabase(cut);
+  renderDrawerBody(cut);
+  renderCutsGrid();
+  toast('Título gerado com a transcrição!', 'ok');
+}
+
+// ── GERADOR DE TÍTULOS LOCAL (sem API, 100% gratuito) ──
+
+const TEMPLATES_TITULO = [
+  v => `O que ninguém te conta sobre ${v}`,
+  v => `Por que você precisa saber sobre ${v} agora`,
+  v => `${v}: a verdade que ninguém fala`,
+  v => `Esse é o maior erro sobre ${v}`,
+  v => `Como ${v} pode mudar sua vida`,
+  v => `${v} — entenda de uma vez por todas`,
+  v => `Isso sobre ${v} vai te surpreender`,
+  v => `O segredo por trás de ${v}`,
+  v => `Por que todo mundo erra em ${v}`,
+  v => `${v} do jeito certo — aprenda agora`,
+  v => `Você está fazendo ${v} errado`,
+  v => `A verdade brutal sobre ${v}`,
+  v => `${v}: o que os especialistas não te contam`,
+  v => `Pare de ignorar ${v} — veja isso`,
+  v => `${v} em menos de 3 minutos`,
+];
+
+const TEMPLATES_DESC = [
+  v => `Esse trecho do podcast vai mudar sua visão sobre ${v}.`,
+  v => `Informação que você precisava ouvir sobre ${v}.`,
+  v => `Esse é um dos melhores momentos sobre ${v}.`,
+  v => `Não perca esse conteúdo sobre ${v}.`,
+  v => `Todo mundo deveria saber sobre ${v}.`,
+];
+
+const HASHTAGS_BASE = ['podcast','brasil','viral','tiktok','reflexao','aprendizado','conhecimento','educacao'];
+
+const HASHTAGS_TEMAS = {
+  dinheiro: ['financas','investimentos','dinheiro','riqueza','rendaextra','educacaofinanceira'],
+  invest:   ['investimentos','bolsadevalores','financas','patrimonio','rendapassiva'],
+  saude:    ['saude','bemestar','qualidadedevida','autocuidado','mentalidade'],
+  negocio:  ['negocios','empreendedorismo','startups','mercado','gestao'],
+  tech:     ['tecnologia','inovacao','futuro','inteligenciaartificial','digital'],
+  politica: ['politica','brasil','sociedade','cidadania','gestao'],
+  relacao:  ['relacionamentos','familia','autoconhecimento','psicologia','comportamento'],
+  esporte:  ['esportes','futebol','fitness','treino','performance'],
+  default:  ['conteudo','podcast','viral','reflexao','aprendizado'],
+};
+
+function extrairTema(transcricao, titulo) {
+  const texto = (transcricao + ' ' + titulo).toLowerCase();
+  if (/dinheiro|salário|renda|poupança|banco|financ/.test(texto)) return 'dinheiro';
+  if (/invest|ação|bolsa|cdi|tesouro|fundo/.test(texto)) return 'invest';
+  if (/saúde|médic|doença|mental|bem.estar|ansied/.test(texto)) return 'saude';
+  if (/negóci|empresa|empreend|startup|gestão|mercado/.test(texto)) return 'negocio';
+  if (/tecnolog|ia |software|digital|app|inteligênc/.test(texto)) return 'tech';
+  if (/polític|governo|eleição|partido|brasil/.test(texto)) return 'politica';
+  if (/relacion|família|amor|psicolog|comportam/.test(texto)) return 'relacao';
+  if (/esporte|futebol|treino|fitness|campeão/.test(texto)) return 'esporte';
+  return 'default';
+}
+
+function extrairPalavraChave(num) {
+  // Usa o tema informado pelo usuário; fallback para lista genérica
+  const temaBase = (state.podcastTema || '').trim();
+  if (temaBase) {
+    // Quebra o tema em palavras-chave e varia por número do corte
+    const palavras = temaBase.split(/[,;\/]+/).map(p => p.trim()).filter(Boolean);
+    if (palavras.length === 1) {
+      // Tema único — cria variações relacionadas
+      const variações = [
+        temaBase,
+        `${temaBase} na prática`,
+        `segredo do ${temaBase}`,
+        `${temaBase} do zero`,
+        `${temaBase} que funciona`,
+        `${temaBase} real`,
+        `erro em ${temaBase}`,
+        `${temaBase} no Brasil`,
+      ];
+      return variações[(num - 1) % variações.length];
+    }
+    return palavras[(num - 1) % palavras.length];
+  }
+  // Fallback genérico
+  const genericos = [
+    'empreendedorismo','mentalidade','dinheiro','investimentos','saúde',
+    'produtividade','liderança','negócios','mercado','sucesso',
+  ];
+  return genericos[(num - 1) % genericos.length];
+}
+
+function gerarMetadados(cut) {
+  const palavra = extrairPalavraChave(cut.num);
+  const temaBase = (state.podcastTema || palavra).toLowerCase();
+  const tema = extrairTema(temaBase, palavra);
+
+  // Varia o template pelo número do corte para não repetir
+  const tmplIdx = (cut.num - 1) % TEMPLATES_TITULO.length;
+  const descIdx = (cut.num - 1) % TEMPLATES_DESC.length;
+
+  const titulo = TEMPLATES_TITULO[tmplIdx](palavra);
+  const descricao = TEMPLATES_DESC[descIdx](palavra);
+
+  // Monta hashtags: tema personalizado + temáticas + base
+  const tematicas = (HASHTAGS_TEMAS[tema] || HASHTAGS_TEMAS.default).slice(0, 3);
+  const base = HASHTAGS_BASE.slice(0, 3);
+
+  // Hashtags do nome do podcast
+  const nomeHash = (state.podcastNome || '')
+    .toLowerCase().replace(/[^a-záéíóúãõâêîôûç\s]/g,'')
+    .trim().replace(/\s+/g,'');
+
+  // Hashtag do tema livre
+  const temaHash = (state.podcastTema || '')
+    .split(/[,;\/\s]+/)[0]
+    .toLowerCase().replace(/[^a-záéíóúãõâêîôûç]/g,'').trim();
+
+  const extras = [nomeHash, temaHash].filter(h => h && h.length > 2);
+  const hashtags = [...new Set([...extras, ...tematicas, ...base])].slice(0, 8);
+
+  return { titulo, descricao, hashtags };
+}
+
+function generateTitle(cutId) {
+  const cut = state.cuts.find(c => c.id === cutId);
+  if (!cut) return;
+  const meta = gerarMetadados(cut);
+  cut.titulo = meta.titulo;
+  cut.descricao = meta.descricao;
+  cut.hashtags = meta.hashtags;
+  if (state.user) saveCutToSupabase(cut);
+  renderDrawerBody(cut);
+  renderCutsGrid();
+  toast('Título gerado!', 'ok');
+}
+
+async function generateAllTitles() {
+  const pending = state.cuts.filter(c => !c.titulo);
+  if (!pending.length) { toast('Todos já têm título!', 'ok'); return; }
+  const btn = document.getElementById('btn-gen-all');
+  btn.disabled = true;
+  pending.forEach(cut => {
+    const meta = gerarMetadados(cut);
+    cut.titulo = meta.titulo;
+    cut.descricao = meta.descricao;
+    cut.hashtags = meta.hashtags;
+  });
+  if (state.user) await saveAllCuts();
+  btn.disabled = false;
+  btn.textContent = '✦ Gerar todos';
+  renderCutsGrid();
+  toast(`${pending.length} títulos gerados!`, 'ok');
+}
+
+// ── SCHEDULING ──
+function updateSchedPreview() {
+  const startVal = document.getElementById('sched-start').value;
+  const horarios = [...document.querySelectorAll('#sched-chips .chip.on')].map(c=>c.dataset.h).sort();
+  const approved = state.cuts.filter(c=>c.status==='aprovado'||c.status==='pendente');
+  if(!startVal||!horarios.length) { document.getElementById('sched-preview').textContent='Selecione uma data e horários.'; return; }
+  const slots = buildSlots(startVal, horarios, approved.length);
+  const lastSlot = slots[slots.length-1];
+  document.getElementById('sched-summary').textContent = `${approved.length} cortes aprovados · ${horarios.length} horários/dia · ${Math.ceil(approved.length/horarios.length)} dias`;
+  document.getElementById('sched-end').textContent = lastSlot ? `Último post: ${fmtDateBR(lastSlot)}` : '—';
+  const preview = slots.slice(0,8).map((s,i)=>`${String(i+1).padStart(2,'0')}  ${fmtDateBR(s)}`).join('\n') + (slots.length>8?`\n… +${slots.length-8} mais`:'');
+  document.getElementById('sched-preview').textContent = preview;
+}
+
+function buildSlots(startDate, horarios, n) {
+  const slots = []; let day = new Date(startDate+'T00:00:00'); let hi = 0;
+  while(slots.length < n) {
+    const [hh,mm] = horarios[hi%horarios.length].split(':').map(Number);
+    const candidate = new Date(day); candidate.setHours(hh,mm,0,0);
+    if(candidate > new Date()) slots.push(candidate.toISOString().substring(0,16));
+    hi++; if(hi%horarios.length===0) day.setDate(day.getDate()+1);
+    if(hi>n*10) break;
+  }
+  return slots;
+}
+
+async function applySchedule() {
+  const startVal = document.getElementById('sched-start').value;
+  const horarios = [...document.querySelectorAll('#sched-chips .chip.on')].map(c=>c.dataset.h).sort();
+  const approved = state.cuts.filter(c=>c.status==='aprovado'||c.status==='pendente');
+  if(!startVal||!horarios.length) { toast('Configure data e horários.','err'); return; }
+  const slots = buildSlots(startVal, horarios, approved.length);
+  approved.forEach((cut,i) => { cut.agendado_para = slots[i]||''; if(slots[i]) cut.status='pendente'; });
+  if(state.user) await saveAllCuts();
+  toast(`${approved.length} cortes agendados!`, 'ok');
+  goPanel(4);
+}
+
+// ── QUEUE ──
+function renderQueue() {
+  const pending = state.cuts.filter(c=>c.status==='pendente'||c.status==='publicado');
+  const done = state.cuts.filter(c=>c.status==='publicado').length;
+  document.getElementById('q-total').textContent = pending.length;
+  document.getElementById('q-done').textContent = done;
+  const nextCut = state.cuts.filter(c=>c.status==='pendente'&&c.agendado_para).sort((a,b)=>new Date(a.agendado_para)-new Date(b.agendado_para))[0];
+  if(nextCut) {
+    const h = Math.max(0,Math.floor((new Date(nextCut.agendado_para)-new Date())/3600000));
+    document.getElementById('q-next').textContent = h<24?h+'h':Math.floor(h/24)+'d';
+    const allPending = state.cuts.filter(c=>c.agendado_para&&c.status==='pendente');
+    if(allPending.length) { const last=allPending.sort((a,b)=>new Date(b.agendado_para)-new Date(a.agendado_para))[0]; document.getElementById('q-days').textContent = Math.ceil((new Date(last.agendado_para)-new Date())/86400000); }
+  } else { document.getElementById('q-next').textContent='—'; document.getElementById('q-days').textContent='—'; }
+  const tbody = document.getElementById('queue-body'); tbody.innerHTML='';
+  [...state.cuts].filter(c=>c.agendado_para).sort((a,b)=>new Date(a.agendado_para)-new Date(b.agendado_para)).forEach(cut=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="mono">${String(cut.num).padStart(2,'0')}</td><td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cut.titulo||'Sem título'}</td><td class="mono">${fmtDur(cut.duracao)}</td><td class="mono">${cut.agendado_para?fmtDateBR(cut.agendado_para):'—'}</td><td><span class="status-pill ${cut.status}">${cut.status}</span></td><td><button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;" onclick="markPublished(${cut.id})">✓</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function markPublished(id) {
+  const cut=state.cuts.find(c=>c.id===id);
+  if(cut){ cut.status='publicado'; if(state.user) await saveCutToSupabase(cut); renderQueue(); toast('Marcado como publicado!','ok'); }
+}
+
+function exportQueue() {
+  const data=state.cuts.filter(c=>c.agendado_para).map(c=>({ id:c.id, titulo:c.titulo, descricao:c.descricao, hashtags:c.hashtags, caption:[c.titulo,c.descricao,c.hashtags.map(h=>'#'+h).join(' ')].filter(Boolean).join('\n'), duracao:Math.round(c.duracao), agendado_para:c.agendado_para, status:c.status, arquivo:`corte_${String(c.num).padStart(2,'0')}.mp4` }));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='fila_publicacao.json'; a.click();
+  toast('JSON exportado!','ok');
+}
+
+function copyQueue() {
+  const data=state.cuts.filter(c=>c.agendado_para).map(c=>`${String(c.num).padStart(2,'0')} · ${fmtDateBR(c.agendado_para)} · ${c.titulo||'Sem título'}`).join('\n');
+  navigator.clipboard.writeText(data).then(()=>toast('Copiado!','ok'));
+}
+
+// ── KEYBOARD ──
+function handleKey(e) {
+  if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  const drawerOpen = document.getElementById('drawer-bg').classList.contains('open');
+  if(drawerOpen) {
+    if(e.key==='ArrowDown'){ e.preventDefault(); navigateCut(1); }
+    if(e.key==='ArrowUp'){ e.preventDefault(); navigateCut(-1); }
+    if(e.key==='Escape') closeDrawer();
+    if(e.key==='a'||e.key==='A') approveAndNext();
+  }
+}
+
+// ── DOWNLOAD ──
+// Usa a API do Cobalt (cobalt.tools) — open source, gratuita, sem limite de uso pessoal
+// Cobalt resolve YouTube e +1000 sites e devolve link direto para download no browser
+
+// Instancias publicas do Cobalt — tenta em ordem ate uma funcionar
+const COBALT_INSTANCES = [
+  'https://api.cobalt.tools',
+  'https://cobalt.api.timelessnesses.me',
+  'https://cobalt.api.layla.gg',
+];
+let dlAbortController = null;
+const dlHistorico = [];
+
+function updateDownloadBtn() {
+  const url = (document.getElementById('download-url') || {}).value || '';
+  const btn = document.getElementById('btn-download');
+  if (btn) btn.disabled = !url.trim();
+}
+
+function setDlStatus(titulo, pct, status, cor) {
+  const wrap = document.getElementById('download-progress-wrap');
+  if (wrap) wrap.style.display = 'block';
+  const elTit = document.getElementById('dl-titulo');
+  const elPct = document.getElementById('dl-pct');
+  const elBar = document.getElementById('dl-bar');
+  const elSt  = document.getElementById('dl-status');
+  const elCancel = document.getElementById('dl-cancel');
+  if (elTit) elTit.textContent = titulo;
+  if (elPct) elPct.textContent = pct + '%';
+  if (elBar) { elBar.style.width = pct + '%'; elBar.style.background = cor || 'var(--accent)'; }
+  if (elSt)  elSt.textContent = status;
+  if (elCancel) elCancel.style.display = pct > 0 && pct < 100 ? 'inline' : 'none';
+}
+
+function setDlErro(msg) {
+  const el = document.getElementById('dl-error');
+  if (el) { el.style.display = 'block'; el.innerHTML = '<strong>Problema:</strong> ' + msg; }
+  setDlStatus('Nao foi possivel baixar', 0, 'erro', '#e24b4a');
+}
+
+function cancelarDownload() {
+  if (dlAbortController) dlAbortController.abort();
+  setDlStatus('Cancelado', 0, 'cancelado');
+  const btn = document.getElementById('btn-download');
+  if (btn) { btn.disabled = false; btn.textContent = 'v Baixar video'; }
+}
+
+async function iniciarDownload() {
+  const urlInput = document.getElementById('download-url');
+  const url = (urlInput || {}).value?.trim();
+  if (!url) return;
+
+  // Avisa se estiver rodando local (file://) — CORS vai bloquear
+  if (window.location.protocol === 'file:') {
+    const errEl = document.getElementById('dl-error');
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.innerHTML = '<strong>Atencao:</strong> Voce esta abrindo o arquivo localmente (file://). ' +
+        'O download so funciona quando o site esta no GitHub Pages ou em um servidor. ' +
+        '<br>Publique no GitHub Pages e acesse pela URL https:// para usar o download.';
+    }
+    const wrap = document.getElementById('download-progress-wrap');
+    if (wrap) wrap.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btn-download');
+  if (btn) { btn.disabled = true; btn.textContent = 'Buscando...'; }
+  const errEl = document.getElementById('dl-error');
+  if (errEl) errEl.style.display = 'none';
+
+  setDlStatus('Buscando informacoes do video...', 5, 'consultando Cobalt...');
+
+  dlAbortController = new AbortController();
+
+  try {
+    // ── Etapa 1: Pede o link direto ao Cobalt ──
+    // Tenta cada instancia publica ate uma responder corretamente
+    let res = null;
+    let lastErr = '';
+    for (const instance of COBALT_INSTANCES) {
+      try {
+        setDlStatus('Buscando informacoes...', 5, 'conectando a ' + new URL(instance).hostname + '...');
+        res = await fetch(instance, {
+          method: 'POST',
+          signal: dlAbortController.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url,
+            videoQuality: '1080',
+            filenameStyle: 'pretty',
+            downloadMode: 'auto',
+          }),
+        });
+        if (res.ok) break; // Funcionou — sai do loop
+        const errData = await res.json().catch(() => ({}));
+        lastErr = errData?.error?.code || 'HTTP ' + res.status;
+        res = null; // Tenta proxima instancia
+      } catch(e) {
+        if (e.name === 'AbortError') throw e;
+        lastErr = e.message;
+        res = null;
+      }
+    }
+
+    if (!res) throw new Error('Nenhuma instancia Cobalt respondeu. ' + lastErr);
+    const data = await res.json();
+
+    // ── Etapa 2: Processa a resposta ──
+    if (data.status === 'error') {
+      throw new Error(data.error?.code || 'Erro desconhecido');
+    }
+
+    // Cobalt pode retornar: redirect (link direto), tunnel (stream proxy), picker (multiplas opcoes)
+    let downloadUrl = null;
+    let nomeArquivo = 'video.mp4';
+
+    if (data.status === 'redirect' || data.status === 'tunnel') {
+      downloadUrl = data.url;
+      nomeArquivo = data.filename || 'video.mp4';
+    } else if (data.status === 'picker') {
+      // Multiplas opcoes — pega a primeira (melhor qualidade)
+      const opcao = data.picker?.[0];
+      if (!opcao) throw new Error('Nenhuma opcao de download encontrada');
+      downloadUrl = opcao.url;
+      nomeArquivo = data.filename || opcao.filename || 'video.mp4';
+    } else {
+      throw new Error('Resposta inesperada: ' + data.status);
+    }
+
+    // ── Etapa 3: Baixa o arquivo com progresso ──
+    setDlStatus('Baixando: ' + nomeArquivo.substring(0, 40), 15, 'conectando...');
+
+    const fileRes = await fetch(downloadUrl, { signal: dlAbortController.signal });
+    if (!fileRes.ok) throw new Error('Falha ao baixar arquivo: ' + fileRes.status);
+
+    const contentLength = fileRes.headers.get('Content-Length');
+    const total = contentLength ? parseInt(contentLength) : 0;
+    const reader = fileRes.body.getReader();
+    const chunks = [];
+    let recebido = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      recebido += value.length;
+      if (total > 0) {
+        const pct = Math.min(99, Math.round(15 + (recebido / total) * 84));
+        const mb = (recebido / 1048576).toFixed(1);
+        const totalMb = (total / 1048576).toFixed(1);
+        setDlStatus(
+          nomeArquivo.substring(0, 35),
+          pct,
+          mb + ' MB / ' + totalMb + ' MB'
+        );
+      } else {
+        const mb = (recebido / 1048576).toFixed(1);
+        // Anima a barra sem saber o total
+        const pct = Math.min(90, 15 + Math.round(mb * 2));
+        setDlStatus(nomeArquivo.substring(0, 35), pct, mb + ' MB baixados...');
+      }
+    }
+
+    // ── Etapa 4: Salva o arquivo ──
+    setDlStatus('Salvando arquivo...', 99, 'finalizando...');
+    const blob = new Blob(chunks, { type: 'video/mp4' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Trigger download no browser
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Disponibiliza para o cortador (etapa 2)
+    state.sourceUrl = blobUrl;
+    state.sourceFile = new File(chunks, nomeArquivo, { type: 'video/mp4' });
+
+    const tamanhoMb = (blob.size / 1048576).toFixed(1);
+    setDlStatus(nomeArquivo.substring(0, 40), 100, 'concluido! (' + tamanhoMb + ' MB)', 'var(--green)');
+
+    // Adiciona ao historico da sessao
+    dlHistorico.unshift({ nome: nomeArquivo, tamanho: tamanhoMb, blobUrl, file: state.sourceFile });
+    renderDlHistorico();
+
+    toast('Download concluido! Arquivo salvo e pronto para cortar.', 'ok');
+
+    // Sugere ir para etapa de corte
+    setTimeout(() => {
+      if (confirm('Download concluido! Ir para a etapa de corte agora?')) {
+        goPanel(1);
+      }
+    }, 800);
+
+    if (btn) { btn.textContent = 'v Baixar video'; btn.disabled = false; }
+    if (urlInput) urlInput.value = '';
+    updateDownloadBtn();
+
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.error('Download error:', err);
+
+    // Mensagens de erro amigaveis
+    const msg = err.message || '';
+    let dica = '';
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('Failed')) {
+      dica = 'Verifique sua conexao com a internet e tente novamente.';
+    } else if (msg.includes('content.too_long') || msg.includes('too long')) {
+      dica = 'Video muito longo para download direto. Use "Ja tenho o arquivo" e baixe manualmente pelo yt-dlp.';
+    } else if (msg.includes('private') || msg.includes('unavailable')) {
+      dica = 'Este video e privado ou nao esta disponivel. Tente outro link.';
+    } else if (msg.includes('age')) {
+      dica = 'Video com restricao de idade. Nao e possivel baixar automaticamente.';
+    } else {
+      dica = 'Tente novamente em alguns segundos. Se o erro persistir, use "Ja tenho o arquivo".';
+    }
+
+    setDlErro(msg + (dica ? '<br>' + dica : ''));
+    if (btn) { btn.disabled = false; btn.textContent = 'v Baixar video'; }
+  }
+}
+
+function renderDlHistorico() {
+  const wrap = document.getElementById('dl-history-wrap');
+  const list = document.getElementById('dl-history-list');
+  if (!wrap || !list || !dlHistorico.length) return;
+  wrap.style.display = 'block';
+  list.innerHTML = dlHistorico.map((item, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.nome}</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">${item.tamanho} MB</div>
+      <button onclick="usarArquivoBaixado(${i})" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--accent);background:var(--accent-light);color:var(--accent);cursor:pointer;font-family:var(--sans);white-space:nowrap;">
+        Usar este
+      </button>
+    </div>
+  `).join('');
+}
+
+function usarArquivoBaixado(idx) {
+  const item = dlHistorico[idx];
+  if (!item) return;
+  state.sourceUrl = item.blobUrl;
+  state.sourceFile = item.file;
+  goPanel(1);
+  // Carrega o arquivo no drop-zone
+  setTimeout(() => loadFile(item.file), 300);
+}
+
+async function carregarHistoricoDownloads() {
+  // Historico e local (nesta sessao) — nao precisa de Supabase
+  renderDlHistorico();
+}
+
+// ── DARK MODE ──
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const icon = document.getElementById('dark-icon');
+  if (icon) icon.textContent = theme === 'dark' ? '☀' : '🌙';
+  localStorage.setItem('pera_theme', theme);
+}
+function toggleDark() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// ── UTILS ──
+function fmtDur(s) { const t=Math.max(0,Math.round(s)),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),ss=t%60; return h?`${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`:`${m}:${String(ss).padStart(2,'0')}`; }
+function fmtSize(b) { return b>1e9?(b/1e9).toFixed(1)+'GB':b>1e6?(b/1e6).toFixed(1)+'MB':(b/1e3).toFixed(0)+'KB'; }
+function fmtDateBR(iso) { const d=new Date(iso); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function setProgress(pct) { document.getElementById('cut-progress-fill').style.width=pct+'%'; document.getElementById('cut-progress-pct').textContent=pct+'%'; }
+function log(msg,type='') { const box=document.getElementById('cut-log'); if(!box)return; const line=document.createElement('div'); line.className='log-line'+(type?' '+type:''); line.textContent=msg; box.appendChild(line); box.scrollTop=box.scrollHeight; }
+function clearLog() { const box=document.getElementById('cut-log'); if(box)box.innerHTML=''; }
+function toast(msg,type='ok') { const wrap=document.getElementById('toast-wrap'); const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; wrap.appendChild(t); setTimeout(()=>t.remove(),3500); }
+</script>
+<div class="pera-watermark">🍐</div>
+</body>
+</html>
