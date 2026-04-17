@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeraStudio</title>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f4f2ed;
+  --surface: #ffffff;
+  --surface2: #ebe8e0;
+  --surface3: #e0ddd5;
+  --border: rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.13);
+  --text: #1a1a16;
+  --muted: #7a7a6e;
+  --muted2: #a8a89a;
+  --accent: #4a7c2f;
+  --accent2: #6aa840;
+  --accent-light: rgba(74,124,47,0.10);
+  --accent-glow: rgba(74,124,47,0.20);
+  --green: #1e6e40;
+  --green-bg: rgba(30,110,64,0.08);
+  --blue: #1a4fa8;
+  --blue-bg: rgba(26,79,168,0.08);
+  --amber: #7a5200;
+  --amber-bg: rgba(122,82,0,0.10);
+  --red: #c0392b;
+  --red-bg: rgba(192,57,43,0.08);
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --r: 10px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+}
+[data-theme="dark"] {
+  --bg: #111310;
+  --surface: #191c16;
+  --surface2: #202318;
+  --surface3: #272a1e;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e4e4d8;
+  --muted: #808070;
+  --muted2: #5a5a4e;
+  --accent: #6aa840;
+  --accent2: #88cc55;
+  --accent-light: rgba(106,168,64,0.12);
+  --accent-glow: rgba(106,168,64,0.25);
+  --green: #3dbf6a;
+  --green-bg: rgba(61,191,106,0.10);
+  --blue: #5b8fe8;
+  --blue-bg: rgba(91,143,232,0.10);
+  --amber: #d4a030;
+  --amber-bg: rgba(212,160,48,0.10);
+  --red: #e05a4a;
+  --red-bg: rgba(224,90,74,0.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ── AUTH OVERLAY ── */
+.auth-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-xl);
+  padding: 40px;
+  width: 100%; max-width: 380px;
+  box-shadow: var(--shadow-lg);
+}
+.auth-logo {
+  font-family: var(--display);
+  font-size: 22px; font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.auth-logo em { font-style: normal; color: var(--accent); }
+.auth-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.auth-field { margin-bottom: 14px; }
+.auth-field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+.auth-field input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 11px 14px; font-size: 14px;
+  font-family: var(--sans); color: var(--text); outline: none; transition: border 0.15s;
+}
+.auth-field input:focus { border-color: var(--accent); }
+.auth-err { font-size: 12px; color: var(--red); min-height: 18px; margin-bottom: 10px; }
+.auth-toggle { text-align: center; margin-top: 16px; font-size: 12px; color: var(--muted); }
+.auth-toggle button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; font-family: var(--sans); }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex; align-items: center; height: 54px; gap: 0;
+}
+.nav-logo {
+  font-family: var(--display);
+  font-size: 15px; font-weight: 800;
+  letter-spacing: -0.03em;
+  display: flex; align-items: center; gap: 6px;
+  margin-right: 32px; flex-shrink: 0;
+}
+.nav-logo em { font-style: normal; color: var(--accent); }
+.nav-steps { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.nav-step {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 13px; border-radius: 20px;
+  font-size: 12.5px; font-weight: 400; color: var(--muted);
+  cursor: pointer; border: none; background: none;
+  white-space: nowrap; transition: all 0.15s;
+}
+.nav-step:hover { color: var(--text); background: var(--surface2); }
+.nav-step.active { color: var(--accent); background: var(--accent-light); font-weight: 500; }
+.nav-step.done { color: var(--green); }
+.step-num {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--surface2); color: var(--muted);
+  font-family: var(--mono); font-size: 9px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.nav-step.active .step-num { background: var(--accent); color: white; }
+.nav-step.done .step-num { background: var(--green); color: white; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--border2);
+  cursor: pointer; font-size: 14px; color: var(--muted);
+  transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--surface2); color: var(--text); }
+.user-chip {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px 4px 4px;
+}
+.user-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: white;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.user-email { font-size: 11px; color: var(--muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signout-btn { background: none; border: none; color: var(--muted); font-size: 11px; cursor: pointer; font-family: var(--sans); padding: 0 0 0 4px; }
+.signout-btn:hover { color: var(--red); }
+
+/* ── MAIN ── */
+main { max-width: 900px; margin: 0 auto; padding: 36px 24px 80px; }
+
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.active { display: block; animation: fadeUp 0.25s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── PAGE HEADER ── */
+.page-head { margin-bottom: 28px; }
+.page-head h1 { font-family: var(--display); font-size: 32px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 6px; }
+.page-head h1 em { font-style: normal; color: var(--accent); }
+.page-head p { color: var(--muted); font-size: 14px; max-width: 460px; line-height: 1.6; }
+
+/* ── CARD ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; margin-bottom: 14px; }
+.card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 8px; display: block; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: 20px;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text); cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface2); }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { opacity: 0.88; background: var(--accent); }
+.btn.green { background: var(--green); color: white; border-color: var(--green); }
+.btn.green:hover { opacity: 0.88; }
+.btn.lg { padding: 12px 26px; font-size: 14px; border-radius: 24px; }
+.btn.sm { padding: 5px 13px; font-size: 12px; }
+.btn.ghost { background: transparent; border-color: var(--border2); }
+.btn.ghost:hover { background: var(--surface2); }
+.btn.danger { background: var(--red-bg); color: var(--red); border-color: transparent; }
+
+/* ── INPUT ── */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 6px; }
+.field input, .field textarea, .field select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 10px 13px; font-size: 13px;
+  font-family: var(--sans); color: var(--text); outline: none; transition: border 0.15s;
+  resize: vertical;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+.field input::placeholder, .field textarea::placeholder { color: var(--muted2); }
+
+/* ── PROGRESS ── */
+.progress-wrap { margin: 16px 0; }
+.progress-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+.progress-track { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.35s ease; }
+.progress-fill.green { background: var(--green); }
+
+/* ── LOG ── */
+.log-box {
+  background: var(--text); border-radius: var(--r);
+  padding: 14px; font-family: var(--mono); font-size: 11.5px;
+  color: #b0b0a0; max-height: 160px; overflow-y: auto; margin-top: 10px;
+}
+.log-line { margin-bottom: 2px; padding-left: 2px; }
+.log-line.ok { color: #5dde8a; }
+.log-line.err { color: #f08080; }
+.log-line.info { color: #7ab4f0; }
+.log-line.warn { color: #f0c060; }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 2px dashed var(--border2); border-radius: var(--r-lg);
+  padding: 52px 32px; text-align: center;
+  cursor: pointer; background: var(--surface);
+  position: relative; transition: all 0.2s;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-light); }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-zone.has-file { border-color: var(--green); background: var(--green-bg); border-style: solid; }
+.drop-icon { width: 48px; height: 48px; background: var(--surface2); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 20px; }
+.drop-zone h3 { font-family: var(--display); font-size: 17px; font-weight: 700; margin-bottom: 5px; }
+.drop-zone p { color: var(--muted); font-size: 13px; }
+
+/* ── SEGMENT CARDS (Step 3 results) ── */
+.segments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.seg-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden; cursor: pointer;
+  transition: all 0.15s; position: relative;
+}
+.seg-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: var(--shadow); }
+.seg-card.selected { border-color: var(--accent); }
+.seg-card.done { border-color: var(--green); }
+.seg-thumb {
+  aspect-ratio: 9/16; background: var(--surface2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.seg-thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.seg-thumb-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.32);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+.seg-num { font-family: var(--mono); font-size: 22px; font-weight: 500; color: rgba(255,255,255,0.85); }
+.seg-dur { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 20px; }
+.seg-status-badge {
+  position: absolute; top: 7px; right: 7px;
+  font-size: 9px; font-family: var(--mono); padding: 2px 7px; border-radius: 20px;
+}
+.seg-status-badge.pendente { background: var(--amber-bg); color: var(--amber); }
+.seg-status-badge.legendado { background: var(--blue-bg); color: var(--blue); }
+.seg-status-badge.pronto { background: var(--green-bg); color: var(--green); }
+.seg-body { padding: 9px 11px; }
+.seg-title { font-size: 11.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+.seg-meta { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+/* ── DRAWER ── */
+.drawer-bg {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  display: none; align-items: stretch; justify-content: flex-end;
+}
+.drawer-bg.open { display: flex; }
+.drawer {
+  background: var(--surface); width: 440px; max-width: 100%;
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+  animation: slideIn 0.25s ease;
+}
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.drawer-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.drawer-head h3 { font-family: var(--display); font-size: 15px; font-weight: 700; flex: 1; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+.drawer-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── VIDEO PREVIEW ── */
+.preview-wrap { position: relative; aspect-ratio: 9/16; background: #000; border-radius: var(--r); overflow: hidden; margin-bottom: 14px; max-height: 320px; }
+.preview-wrap video { width: 100%; height: 100%; object-fit: contain; }
+.subtitle-overlay {
+  position: absolute; bottom: 40px; left: 0; right: 0;
+  text-align: center; pointer-events: none; padding: 0 12px; display: none;
+}
+.subtitle-text {
+  background: rgba(0,0,0,0.82); color: #fff;
+  font-size: 13px; font-weight: 600; line-height: 1.4;
+  padding: 4px 10px; border-radius: 6px;
+  display: inline-block; max-width: 100%; word-break: break-word;
+}
+.preview-controls { display: flex; gap: 6px; margin-bottom: 12px; }
+
+/* ── STEP 4: PUBLISH ── */
+.publish-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-lg); padding: 20px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 16px;
+}
+.publish-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.publish-card h3 { font-family: var(--display); font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.publish-card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ── QUEUE TABLE ── */
+.queue-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.queue-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0 10px 10px; border-bottom: 1px solid var(--border); }
+.queue-table td { padding: 11px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.queue-table tr:last-child td { border-bottom: none; }
+
+/* ── STATS ROW ── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; }
+.stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+.stat-val { font-family: var(--display); font-size: 24px; font-weight: 800; letter-spacing: -0.04em; }
+.stat-val.accent { color: var(--accent); }
+.stat-val.green { color: var(--green); }
+.stat-val.blue { color: var(--blue); }
+
+/* ── TOAST ── */
+.toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--text); color: var(--bg);
+  padding: 10px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+  animation: toastIn 0.2s ease;
+  box-shadow: var(--shadow-lg);
+}
+@keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.toast.ok { background: var(--green); color: white; }
+.toast.err { background: var(--red); color: white; }
+.toast.info { background: var(--blue); color: white; }
+
+/* ── HASHTAG CHIPS ── */
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.tag-chip {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 3px 10px; font-size: 11px;
+  color: var(--muted); cursor: pointer; font-family: var(--sans);
+  transition: all 0.12s;
+}
+.tag-chip:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+
+/* ── AI THINKING ── */
+.ai-thinking {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; background: var(--accent-light);
+  border: 1px solid var(--accent-glow); border-radius: var(--r);
+  font-size: 12px; color: var(--accent); margin-bottom: 12px;
+}
+.ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 0.9s infinite; }
+.ai-dot:nth-child(2) { animation-delay: 0.3s; }
+.ai-dot:nth-child(3) { animation-delay: 0.6s; }
+@keyframes blink { 0%,100%{opacity:0.2} 50%{opacity:1} }
+
+/* ── WATERMARK ── */
+.watermark { position: fixed; bottom: 16px; left: 20px; font-size: 18px; opacity: 0.15; pointer-events: none; }
+
+/* ── TIKTOK LAUNCH PANEL ── */
+.tiktok-launch {
+  background: linear-gradient(135deg, #010101 0%, #1a1a1a 100%);
+  border-radius: var(--r-xl); padding: 28px; margin-bottom: 14px; color: white;
+}
+.tiktok-launch h2 { font-family: var(--display); font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+.tiktok-launch p { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; }
+.tiktok-step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.tiktok-step-num { width: 24px; height: 24px; border-radius: 50%; background: #ff0050; color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.tiktok-step p { font-size: 13px; color: rgba(255,255,255,0.8); margin: 0; line-height: 1.5; }
+
+/* ── UTILS ── */
+.row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.spacer { flex: 1; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.text-sm { font-size: 12px; }
+.kbd { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 1px 6px; font-family: var(--mono); font-size: 10px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo" style="justify-content:center;margin-bottom:4px;">🍐 Pera<em>Studio</em></div>
+    <div class="auth-sub" style="text-align:center;margin-bottom:32px;">Faça login para começar a colher conteúdo.</div>
+
+    <button id="btn-google" onclick="signInWithGoogle()" style="
+      width:100%;display:flex;align-items:center;justify-content:center;gap:12px;
+      padding:14px 20px;border-radius:12px;border:1.5px solid var(--border2);
+      background:var(--surface);cursor:pointer;font-family:var(--sans);
+      font-size:14px;font-weight:500;color:var(--text);
+      transition:all 0.15s;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.06);
+    " onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+      <svg width="20" height="20" viewBox="0 0 18 18">
+        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+        <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
+        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+      </svg>
+      Continuar com Google
+    </button>
+
+    <div class="auth-err" id="auth-err" style="text-align:center;"></div>
+
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--muted2);line-height:1.6;">
+      Ao entrar, você concorda com o uso do app.<br>
+      Seus dados ficam salvos apenas neste navegador.
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="main-nav" style="display:none;">
+  <div class="nav-logo">🍐 Pera<em>Studio</em></div>
+  <div class="nav-steps">
+    <button class="nav-step active" onclick="goStep(0)" id="nav0"><div class="step-num">1</div> Baixar</button>
+    <button class="nav-step" onclick="goStep(1)" id="nav1"><div class="step-num">2</div> Selecionar arquivo</button>
+    <button class="nav-step" onclick="goStep(2)" id="nav2"><div class="step-num">3</div> Cortar com IA</button>
+    <button class="nav-step" onclick="goStep(3)" id="nav3"><div class="step-num">4</div> Revisar e legendar</button>
+    <button class="nav-step" onclick="goStep(4)" id="nav4"><div class="step-num">5</div> Publicar</button>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" onclick="toggleDark()" title="Tema" id="theme-btn">🌙</button>
+    <div class="user-chip" id="user-chip" style="display:none;">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-email" id="user-email-label"></span>
+      <button class="signout-btn" onclick="signOut()">sair</button>
+    </div>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- DRAWER -->
+<div class="drawer-bg" id="drawer-bg" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div class="drawer-head">
+      <h3 id="drawer-title">Corte</h3>
+      <button class="btn sm ghost" onclick="navigateSeg(-1)">↑</button>
+      <button class="btn sm ghost" onclick="navigateSeg(1)">↓</button>
+      <button class="btn sm ghost" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+    <div class="drawer-foot">
+      <button class="btn ghost" onclick="saveDrawer()">Salvar</button>
+      <button class="btn primary" onclick="approveAndNext()">Aprovar →</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- ══════════════════════════════════════ -->
+<!-- STEP 0: BAIXAR -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel active" id="panel-0">
+  <div class="page-head">
+    <h1>Baixe o<br><em>vídeo</em></h1>
+    <p>Cole o link do YouTube, Instagram, TikTok ou outro site. O download acontece direto no seu navegador.</p>
+  </div>
+
+  <div class="card">
+    <span class="card-label">URL do vídeo</span>
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+      <input type="url" id="dl-url" placeholder="https://youtube.com/watch?v=…"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);padding:11px 14px;font-size:14px;font-family:var(--mono);color:var(--text);outline:none;transition:border 0.15s;"
+        oninput="updateDlBtn()" onkeydown="if(event.key==='Enter')startDownload()">
+      <button class="btn primary lg" id="dl-btn" onclick="startDownload()" disabled>↓ Baixar</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn ghost sm" onclick="goStep(1)">Já tenho o arquivo →</button>
+    </div>
+  </div>
+
+  <!-- Progresso download -->
+  <div id="dl-progress-card" class="card" style="display:none;">
+    <div class="progress-wrap" style="margin:0;">
+      <div class="progress-row">
+        <span id="dl-prog-label">Preparando…</span>
+        <span id="dl-prog-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="dl-prog-fill" style="width:0%"></div></div>
+      <div style="margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--muted);" id="dl-prog-sub"></div>
+    </div>
+    <div id="dl-error" style="display:none;margin-top:10px;padding:10px;background:var(--amber-bg);border-radius:var(--r);font-size:12px;color:var(--amber);line-height:1.6;"></div>
+    <button id="dl-cancel-btn" class="btn sm danger" style="margin-top:10px;display:none;" onclick="cancelDownload()">Cancelar</button>
+  </div>
+
+  <!-- Histórico sessão -->
+  <div id="dl-history-card" class="card" style="display:none;">
+    <span class="card-label">Baixados nesta sessão</span>
+    <div id="dl-history-list"></div>
+  </div>
+
+  <div class="card" style="font-size:12px;color:var(--muted);line-height:1.8;">
+    <strong style="color:var(--text);">Funciona com:</strong> YouTube, Instagram, TikTok, Twitter/X, Vimeo e +1000 sites.<br>
+    <strong style="color:var(--text);">Qualidade:</strong> melhor MP4 disponível.<br>
+    <strong style="color:var(--text);">Limite:</strong> até ~2h. Vídeos muito longos: use "Já tenho o arquivo".
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- STEP 1: SELECIONAR ARQUIVO -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel-1">
+  <div class="page-head">
+    <h1>Selecione o<br><em>arquivo</em></h1>
+    <p>Escolha o MP4 que você baixou. Todo o processamento acontece no seu navegador — nada é enviado para servidores externos.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="field" style="margin:0;">
+        <label>Tema do conteúdo</label>
+        <input type="text" id="content-tema" placeholder="ex: finanças, empreendedorismo…" oninput="state.tema=this.value">
+      </div>
+      <div class="field" style="margin:0;">
+        <label>Nome do canal / podcast</label>
+        <input type="text" id="content-canal" placeholder="ex: Flow Podcast, Primo Rico…" oninput="state.canal=this.value">
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.6;">
+      Essas informações ajudam a IA a gerar títulos e hashtags mais precisos para cada corte.
+    </div>
+  </div>
+
+  <div class="drop-zone" id="drop-zone"
+    ondragover="handleDragOver(event)" ondragleave="handleDragLeave()" ondrop="handleDrop(event)">
+    <input type="file" accept=".mp4,video/mp4" onchange="handleFileSelect(event)">
+    <div class="drop-icon" id="drop-icon">▶</div>
+    <h3 id="drop-title">Solte o arquivo MP4 aqui</h3>
+    <p id="drop-sub">ou clique para selecionar · apenas .mp4</p>
+  </div>
+
+  <div id="file-ready" style="display:none;">
+    <div class="divider"></div>
+    <div class="row">
+      <div>
+        <div style="font-size:14px;font-weight:500;" id="file-name">—</div>
+        <div style="font-size:12px;color:var(--muted);" id="file-info">—</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="resetFile()">Trocar arquivo</button>
+      <button class="btn primary lg" onclick="goStep(2)">Analisar com IA →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- STEP 2: CORTAR COM IA -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel-2">
+  <div class="page-head">
+    <h1>Identificar os<br><em>melhores momentos</em></h1>
+    <p>A IA ouve o vídeo, identifica os trechos mais interessantes e extrai só as partes que valem a pena.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;">
+    <span class="card-label">Configurações de corte</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+      <div class="field" style="margin:0;">
+        <label>Duração mínima por corte</label>
+        <select id="min-dur" onchange="state.minDur=+this.value">
+          <option value="30">30 segundos</option>
+          <option value="60" selected>1 minuto</option>
+          <option value="90">1m 30s</option>
+          <option value="120">2 minutos</option>
+          <option value="180">3 minutos</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label>Duração máxima por corte</label>
+        <select id="max-dur" onchange="state.maxDur=+this.value">
+          <option value="60">1 minuto</option>
+          <option value="120">2 minutos</option>
+          <option value="180" selected>3 minutos</option>
+          <option value="300">5 minutos</option>
+          <option value="600">10 minutos</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label>Máximo de cortes</label>
+        <select id="max-cuts" onchange="state.maxCuts=+this.value">
+          <option value="3">3 cortes</option>
+          <option value="5" selected>5 cortes</option>
+          <option value="8">8 cortes</option>
+          <option value="12">12 cortes</option>
+          <option value="20">20 cortes</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="cut-idle-card">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:500;" id="cut-file-label">Nenhum arquivo carregado</div>
+        <div style="font-size:12px;color:var(--muted);" id="cut-dur-label">Selecione um arquivo na etapa anterior</div>
+      </div>
+      <button class="btn primary lg" id="btn-analyze" onclick="startAnalysis()">✦ Analisar vídeo</button>
+    </div>
+  </div>
+
+  <!-- Progresso análise -->
+  <div id="analysis-progress" class="card" style="display:none;">
+    <div id="ai-thinking-block" class="ai-thinking" style="display:none;">
+      <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+      <span id="ai-thinking-label">A IA está analisando o conteúdo…</span>
+    </div>
+    <div class="progress-wrap" style="margin-top:0;">
+      <div class="progress-row">
+        <span id="analysis-label">Iniciando…</span>
+        <span id="analysis-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="analysis-fill" style="width:0%"></div></div>
+    </div>
+    <div class="log-box" id="analysis-log"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- STEP 3: REVISAR E LEGENDAR -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel-3">
+  <div class="page-head">
+    <h1>Revise e<br><em>legenda</em></h1>
+    <p>Clique em cada corte para revisar, legendar e ajustar o título. A IA gera tudo baseada no conteúdo real.</p>
+  </div>
+
+  <div class="stats-row" id="review-stats">
+    <div class="stat-card"><div class="stat-label">Cortes</div><div class="stat-val accent" id="stat-total">0</div></div>
+    <div class="stat-card"><div class="stat-label">Prontos</div><div class="stat-val green" id="stat-ready">0</div></div>
+    <div class="stat-card"><div class="stat-label">Legendados</div><div class="stat-val blue" id="stat-sub">0</div></div>
+    <div class="stat-card"><div class="stat-label">Duração total</div><div class="stat-val" id="stat-dur">0m</div></div>
+  </div>
+
+  <div class="row">
+    <span style="font-size:15px;font-weight:600;font-family:var(--display);">Cortes identificados</span>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" onclick="gerarTodosTitulos()">✦ Gerar todos os títulos</button>
+    <button class="btn primary" onclick="goStep(4)">Publicar →</button>
+  </div>
+  <div style="font-size:11.5px;color:var(--muted);margin-bottom:14px;"><span class="kbd">Clique</span> para abrir e editar cada corte</div>
+
+  <div class="segments-grid" id="segments-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- STEP 4: PUBLICAR -->
+<!-- ══════════════════════════════════════ -->
+<div class="panel" id="panel-4">
+  <div class="page-head">
+    <h1>Publique no<br><em>TikTok</em></h1>
+    <p>Selecione os cortes aprovados e publique um a um no TikTok com título e hashtags já preenchidos.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Prontos para postar</div><div class="stat-val accent" id="pub-total">0</div></div>
+    <div class="stat-card"><div class="stat-label">Postados</div><div class="stat-val green" id="pub-done">0</div></div>
+    <div class="stat-card"><div class="stat-label">Pendentes</div><div class="stat-val" id="pub-pending">0</div></div>
+    <div class="stat-card"><div class="stat-label">Duração total</div><div class="stat-val blue" id="pub-dur">0m</div></div>
+  </div>
+
+  <div class="tiktok-launch">
+    <h2>Como funciona a publicação</h2>
+    <p>A API oficial do TikTok não permite upload direto de sites externos. O processo abaixo leva menos de 30 segundos por vídeo.</p>
+    <div class="tiktok-step">
+      <div class="tiktok-step-num">1</div>
+      <p>Clique em "Abrir no TikTok" — o vídeo é baixado e o TikTok Studio abre automaticamente em nova aba.</p>
+    </div>
+    <div class="tiktok-step">
+      <div class="tiktok-step-num">2</div>
+      <p>Arraste o arquivo baixado para a área de upload do TikTok Studio.</p>
+    </div>
+    <div class="tiktok-step">
+      <div class="tiktok-step-num">3</div>
+      <p>O título e as hashtags já estão copiados na área de transferência — é só colar (Ctrl+V).</p>
+    </div>
+    <div class="tiktok-step">
+      <div class="tiktok-step-num">4</div>
+      <p>Clique em Publicar. Pronto.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <span style="font-size:15px;font-weight:600;font-family:var(--display);">Fila de publicação</span>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" onclick="exportarZip()" id="btn-export-zip">↗ Exportar ZIP</button>
+  </div>
+
+  <table class="queue-table" id="pub-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Título</th>
+        <th>Duração</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="pub-body"></tbody>
+  </table>
+</div>
+
+</main>
+<div class="watermark">🍐</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+// Google OAuth Client ID (Google Identity Services)
+const GOOGLE_CLIENT_ID = '729964182866-oh47cuh3d10947j4vtvi5a4unvqgemih.apps.googleusercontent.com';
+
+const COBALT_INSTANCES = [
+  'https://cobalt.datura.network/api',
+  'https://cobalt.api.timelessnesses.me/api',
+  'https://cobalt.tools/api',
+];
+
+const { FFmpeg } = window.FFmpegWASM || {};
+const { fetchFile } = window.FFmpegUtil || {};
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let state = {
+  user: null,
+  step: 0,
+  // Video source
+  sourceFile: null,
+  sourceUrl: null,
+  sourceDuration: 0,
+  // Content context
+  tema: '',
+  canal: '',
+  // Config
+  minDur: 60,
+  maxDur: 180,
+  maxCuts: 5,
+  // Segments
+  segments: [],         // [{id, start, end, duracao, titulo, descricao, hashtags, transcricao, srt, blobUrl, status}]
+  activeSegId: null,
+  // FFmpeg
+  ffmpegLoaded: false,
+  ffmpeg: null,
+  // Session
+  sessionId: null,
+  // Download
+  dlAbortCtrl: null,
+  dlHistory: [],
+  // Subtitles
+  legendasAtivas: false,
+  legendaRafId: null,
+};
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(localStorage.getItem('pera_theme') || 'light');
+  initFFmpeg();
+
+  // Verifica se já tem sessão salva no localStorage
+  const savedUser = localStorage.getItem('pera_user');
+  if (savedUser) {
+    try { onLogin(JSON.parse(savedUser)); } catch(e) { localStorage.removeItem('pera_user'); }
+  }
+
+  // Inicializa Google Identity Services
+  if (window.google) {
+    initGoogleAuth();
+  } else {
+    // Aguarda o script do Google carregar
+    const script = document.querySelector('script[src*="accounts.google.com"]');
+    if (script) script.addEventListener('load', initGoogleAuth);
+  }
+});
+
+function initGoogleAuth() {
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleCallback,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// AUTH — Google Identity Services (sem Supabase)
+// ══════════════════════════════════════════════════════
+
+function signInWithGoogle() {
+  const btn = document.getElementById('btn-google');
+  if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.textContent = 'Abrindo Google…'; }
+  try {
+    google.accounts.id.prompt((notification) => {
+      if(notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // One Tap não mostrou — abre popup manual
+        google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'email profile',
+          callback: (tokenResponse) => {
+            if(tokenResponse.error) {
+              showAuthError('Erro ao entrar com Google: ' + tokenResponse.error);
+              if(btn) { btn.disabled=false; btn.style.opacity='1'; btn.textContent='Entrar com Google'; }
+              return;
+            }
+            // Busca dados do perfil com o access token
+            fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
+            }).then(r=>r.json()).then(profile => {
+              handleGoogleProfile(profile);
+            }).catch(() => showAuthError('Erro ao buscar perfil do Google.'));
+          },
+        }).requestAccessToken({ prompt: 'select_account' });
+      }
+    });
+  } catch(e) {
+    showAuthError('Erro ao inicializar Google: ' + e.message);
+    if(btn) { btn.disabled=false; btn.style.opacity='1'; btn.textContent='Entrar com Google'; }
+  }
+}
+
+// Callback do One Tap (JWT credential)
+function handleGoogleCallback(response) {
+  try {
+    // Decodifica o JWT (payload em base64)
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    handleGoogleProfile({
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      picture: payload.picture,
+    });
+  } catch(e) {
+    showAuthError('Erro ao processar login do Google.');
+  }
+}
+
+function handleGoogleProfile(profile) {
+  const user = {
+    id: profile.sub,
+    email: profile.email,
+    name: profile.name || profile.email,
+    picture: profile.picture || null,
+  };
+  localStorage.setItem('pera_user', JSON.stringify(user));
+  onLogin(user);
+}
+
+function showAuthError(msg) {
+  const err = document.getElementById('auth-err');
+  if(err) { err.style.color='var(--red)'; err.textContent = msg; }
+}
+
+function onLogin(user) {
+  state.user = user;
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('user-chip').style.display = 'flex';
+  // Avatar: foto do Google ou iniciais
+  const avatar = document.getElementById('user-avatar');
+  if(user.picture) {
+    avatar.innerHTML = `<img src="${user.picture}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+  } else {
+    avatar.textContent = (user.name || user.email).substring(0,2).toUpperCase();
+  }
+  document.getElementById('user-email-label').textContent = user.name || user.email;
+}
+
+function onLogout() {
+  state.user = null;
+  localStorage.removeItem('pera_user');
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('main-nav').style.display = 'none';
+  document.getElementById('user-chip').style.display = 'none';
+  // Revoga sessão Google para forçar seleção de conta no próximo login
+  if(window.google) google.accounts.id.disableAutoSelect();
+}
+
+function signOut() {
+  onLogout();
+  toast('Até logo!', 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════
+function goStep(n) {
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===n));
+  document.querySelectorAll('.nav-step').forEach((s,i) => {
+    s.classList.remove('active','done');
+    if(i===n) s.classList.add('active');
+    else if(i<n) s.classList.add('done');
+  });
+  state.step = n;
+  if(n===2) updateAnalysisPanel();
+  if(n===3) renderSegmentsGrid();
+  if(n===4) renderPublishQueue();
+}
+
+// ══════════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════════
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('theme-btn');
+  if(btn) btn.textContent = t==='dark' ? '☀' : '🌙';
+  localStorage.setItem('pera_theme', t);
+}
+function toggleDark() {
+  applyTheme(document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 0: DOWNLOAD
+// ══════════════════════════════════════════════════════
+function updateDlBtn() {
+  const v = document.getElementById('dl-url').value.trim();
+  document.getElementById('dl-btn').disabled = !v;
+}
+
+function setDlProgress(label, pct, sub, color) {
+  document.getElementById('dl-progress-card').style.display = 'block';
+  document.getElementById('dl-prog-label').textContent = label;
+  document.getElementById('dl-prog-pct').textContent = pct + '%';
+  document.getElementById('dl-prog-fill').style.width = pct + '%';
+  if(color) document.getElementById('dl-prog-fill').style.background = color;
+  if(sub !== undefined) document.getElementById('dl-prog-sub').textContent = sub;
+  document.getElementById('dl-cancel-btn').style.display = pct < 100 ? 'inline-flex' : 'none';
+}
+
+function cancelDownload() {
+  if(state.dlAbortCtrl) state.dlAbortCtrl.abort();
+  document.getElementById('dl-progress-card').style.display = 'none';
+  document.getElementById('dl-btn').disabled = false;
+  document.getElementById('dl-btn').textContent = '↓ Baixar';
+}
+
+async function startDownload() {
+  const url = document.getElementById('dl-url').value.trim();
+  if(!url) return;
+  const btn = document.getElementById('dl-btn');
+  btn.disabled = true; btn.textContent = 'Buscando…';
+  document.getElementById('dl-error').style.display = 'none';
+  setDlProgress('Conectando ao Cobalt…', 5, '');
+  state.dlAbortCtrl = new AbortController();
+
+  try {
+    let res = null, lastErr = '';
+    for(const inst of COBALT_INSTANCES) {
+      try {
+        setDlProgress('Buscando vídeo…', 8, new URL(inst).hostname);
+        res = await fetch(inst, {
+          method: 'POST', signal: state.dlAbortCtrl.signal,
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, videoQuality: '1080', filenameStyle: 'pretty', downloadMode: 'auto' }),
+        });
+        if(res.ok) break;
+        lastErr = 'HTTP ' + res.status; res = null;
+      } catch(e) {
+        if(e.name==='AbortError') throw e;
+        lastErr = e.message; res = null;
+      }
+    }
+    if(!res) throw new Error('Nenhuma instância Cobalt respondeu. ' + lastErr);
+    const data = await res.json();
+    if(data.status==='error') throw new Error(data.error?.code || 'Erro desconhecido');
+
+    let downloadUrl = null, filename = 'video.mp4';
+    if(data.status==='redirect'||data.status==='tunnel') { downloadUrl=data.url; filename=data.filename||filename; }
+    else if(data.status==='picker') { const o=data.picker?.[0]; if(!o) throw new Error('Sem opções'); downloadUrl=o.url; filename=data.filename||o.filename||filename; }
+    else throw new Error('Resposta inesperada: '+data.status);
+
+    setDlProgress('Baixando: '+filename.substring(0,35), 15, 'conectando…');
+    const fileRes = await fetch(downloadUrl, { signal: state.dlAbortCtrl.signal });
+    if(!fileRes.ok) throw new Error('Falha HTTP '+fileRes.status);
+
+    const contentLength = fileRes.headers.get('Content-Length');
+    const total = contentLength ? parseInt(contentLength) : 0;
+    const reader = fileRes.body.getReader();
+    const chunks = []; let received = 0;
+
+    while(true) {
+      const { done, value } = await reader.read();
+      if(done) break;
+      chunks.push(value); received += value.length;
+      if(total>0) {
+        const pct = Math.min(99, Math.round(15+(received/total)*83));
+        setDlProgress(filename.substring(0,35), pct, (received/1048576).toFixed(1)+' MB / '+(total/1048576).toFixed(1)+' MB');
+      } else {
+        const mb = (received/1048576).toFixed(1);
+        setDlProgress(filename.substring(0,35), Math.min(90,15+Math.round(+mb*2)), mb+' MB baixados…');
+      }
+    }
+
+    setDlProgress('Salvando…', 99, 'finalizando…');
+    const blob = new Blob(chunks, { type:'video/mp4' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Trigger download local
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+    // Salva no state para uso direto
+    const file = new File(chunks, filename, { type:'video/mp4' });
+    state.sourceFile = file;
+    state.sourceUrl = blobUrl;
+
+    const mb = (blob.size/1048576).toFixed(1);
+    setDlProgress(filename.substring(0,40), 100, 'Concluído! ('+mb+' MB)', 'var(--green)');
+
+    state.dlHistory.unshift({ nome: filename, mb, blobUrl, file });
+    renderDlHistory();
+    toast('Download concluído! Arquivo salvo.', 'ok');
+
+    setTimeout(() => { if(confirm('Download concluído! Ir para a próxima etapa?')) goStep(1); }, 800);
+
+  } catch(e) {
+    if(e.name==='AbortError') return;
+    let msg = e.message || 'Erro desconhecido';
+    const errEl = document.getElementById('dl-error');
+    errEl.style.display = 'block';
+    errEl.textContent = msg;
+  } finally {
+    btn.disabled = false; btn.textContent = '↓ Baixar';
+    document.getElementById('dl-url').value = '';
+    updateDlBtn();
+  }
+}
+
+function renderDlHistory() {
+  const card = document.getElementById('dl-history-card');
+  const list = document.getElementById('dl-history-list');
+  if(!state.dlHistory.length) return;
+  card.style.display = 'block';
+  list.innerHTML = state.dlHistory.map((item,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.nome}</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">${item.mb} MB</div>
+      <button class="btn sm primary" onclick="usarArquivoBaixado(${i})">Usar este</button>
+    </div>`).join('');
+}
+
+function usarArquivoBaixado(i) {
+  const item = state.dlHistory[i];
+  state.sourceFile = item.file;
+  state.sourceUrl = item.blobUrl;
+  goStep(1);
+  setTimeout(() => loadFile(item.file), 200);
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 1: FILE SELECT
+// ══════════════════════════════════════════════════════
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file && (file.type==='video/mp4'||file.name.endsWith('.mp4'))) loadFile(file);
+  else toast('Use apenas arquivos .mp4', 'err');
+}
+function handleFileSelect(e) { const f=e.target.files[0]; if(f) loadFile(f); }
+
+function loadFile(file) {
+  state.sourceFile = file;
+  if(state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
+  state.sourceUrl = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.src = state.sourceUrl;
+  video.onloadedmetadata = () => {
+    state.sourceDuration = video.duration;
+    const dz = document.getElementById('drop-zone');
+    dz.classList.add('has-file');
+    document.getElementById('drop-icon').textContent = '✓';
+    document.getElementById('drop-title').textContent = file.name;
+    document.getElementById('drop-sub').textContent = fmtSize(file.size) + ' · ' + fmtDur(video.duration);
+    document.getElementById('file-ready').style.display = 'block';
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-info').textContent = fmtSize(file.size) + ' · ' + fmtDur(video.duration);
+    // Preenche tema/canal se campos já tinham valor
+    state.tema = document.getElementById('content-tema').value || state.tema;
+    state.canal = document.getElementById('content-canal').value || state.canal;
+  };
+}
+
+function resetFile() {
+  state.sourceFile = null; state.sourceUrl = null; state.sourceDuration = 0;
+  const dz = document.getElementById('drop-zone');
+  dz.classList.remove('has-file');
+  document.getElementById('drop-icon').textContent = '▶';
+  document.getElementById('drop-title').textContent = 'Solte o arquivo MP4 aqui';
+  document.getElementById('drop-sub').textContent = 'ou clique para selecionar · apenas .mp4';
+  document.getElementById('file-ready').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 2: AI ANALYSIS + CUTTING
+// ══════════════════════════════════════════════════════
+function updateAnalysisPanel() {
+  if(state.sourceFile) {
+    document.getElementById('cut-file-label').textContent = state.sourceFile.name;
+    document.getElementById('cut-dur-label').textContent = fmtDur(state.sourceDuration);
+  } else {
+    document.getElementById('cut-file-label').textContent = 'Nenhum arquivo carregado';
+    document.getElementById('cut-dur-label').textContent = 'Volte e selecione um arquivo MP4';
+  }
+}
+
+function analysisLog(msg, type='') {
+  const box = document.getElementById('analysis-log');
+  if(!box) return;
+  const line = document.createElement('div');
+  line.className = 'log-line' + (type ? ' '+type : '');
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setAnalysisProgress(label, pct) {
+  document.getElementById('analysis-label').textContent = label;
+  document.getElementById('analysis-pct').textContent = pct+'%';
+  document.getElementById('analysis-fill').style.width = pct+'%';
+}
+
+function showAiThinking(label) {
+  const el = document.getElementById('ai-thinking-block');
+  el.style.display = 'flex';
+  document.getElementById('ai-thinking-label').textContent = label;
+}
+function hideAiThinking() { document.getElementById('ai-thinking-block').style.display = 'none'; }
+
+async function startAnalysis() {
+  if(!state.sourceFile) { toast('Selecione um arquivo MP4 primeiro.', 'err'); goStep(1); return; }
+
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true; btn.textContent = 'Analisando…';
+  document.getElementById('analysis-progress').style.display = 'block';
+  document.getElementById('analysis-log').innerHTML = '';
+
+  try {
+    // FASE 1: Transcrição via Web Audio + Speech API
+    analysisLog('Iniciando análise do áudio…', 'info');
+    setAnalysisProgress('Analisando áudio…', 5);
+
+    const transcricaoCompleta = await transcreverVideoCompleto();
+    analysisLog('✓ Transcrição concluída: ' + transcricaoCompleta.length + ' caracteres', 'ok');
+    setAnalysisProgress('Transcrição concluída', 35);
+
+    // FASE 2: IA identifica os melhores segmentos
+    showAiThinking('A IA está lendo a transcrição e identificando os melhores momentos…');
+    analysisLog('Enviando para análise de IA…', 'info');
+    setAnalysisProgress('IA identificando momentos…', 45);
+
+    const segmentos = await identificarSegmentosIA(transcricaoCompleta);
+    hideAiThinking();
+    analysisLog('✓ IA identificou ' + segmentos.length + ' segmentos interessantes', 'ok');
+    setAnalysisProgress('Segmentos identificados', 60);
+
+    // FASE 3: FFmpeg corta os segmentos
+    if(segmentos.length === 0) throw new Error('A IA não encontrou segmentos bons. Tente ajustar as configurações.');
+
+    state.segments = [];
+    for(let i=0; i<segmentos.length; i++) {
+      const seg = segmentos[i];
+      analysisLog(`Cortando segmento ${i+1}/${segmentos.length}: ${fmtDur(seg.start)} → ${fmtDur(seg.end)}…`);
+      setAnalysisProgress('Cortando segmento ' + (i+1) + '/' + segmentos.length, 60 + Math.round((i/segmentos.length)*35));
+
+      let blobUrl = null;
+      if(state.ffmpegLoaded && state.ffmpeg) {
+        blobUrl = await cutWithFFmpeg(seg.start, seg.end - seg.start, i+1);
+      } else {
+        blobUrl = state.sourceUrl;
+        await sleep(100);
+      }
+
+      state.segments.push({
+        id: i+1, num: i+1,
+        start: seg.start, end: seg.end,
+        duracao: seg.end - seg.start,
+        blobUrl,
+        titulo: seg.titulo || '',
+        descricao: seg.descricao || '',
+        hashtags: seg.hashtags || [],
+        transcricao: seg.transcricao || '',
+        srt: '',
+        status: 'pendente',
+        supaId: null,
+        publicado: false,
+      });
+      analysisLog('✓ Corte ' + (i+1) + ' gerado (' + fmtDur(seg.end-seg.start) + ')', 'ok');
+    }
+
+    setAnalysisProgress('Concluído!', 100);
+    analysisLog('✓ ' + state.segments.length + ' cortes prontos para revisão.', 'ok');
+    toast(state.segments.length + ' cortes gerados!', 'ok');
+
+    setTimeout(() => goStep(3), 800);
+
+  } catch(e) {
+    hideAiThinking();
+    analysisLog('Erro: ' + e.message, 'err');
+    toast('Erro: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = '✦ Analisar vídeo';
+  }
+}
+
+// ── TRANSCRIÇÃO COMPLETA VIA WEB SPEECH API ──
+async function transcreverVideoCompleto() {
+  return new Promise((resolve, reject) => {
+    if(!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      // Sem Speech API — retorna transcrição vazia (a IA vai usar a duração)
+      analysisLog('⚠ Web Speech API não disponível — usando análise por duração.', 'warn');
+      resolve('');
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.src = state.sourceUrl;
+    video.volume = 1;
+    video.muted = false;
+    video.playbackRate = 1;
+    // Não adiciona ao DOM — a Speech API captura o áudio do tab mesmo assim no Chrome
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang = 'pt-BR';
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+
+    let texto = '';
+    let finished = false;
+
+    const finish = () => {
+      if(finished) return;
+      finished = true;
+      video.pause();
+      try { rec.stop(); } catch(e) {}
+      resolve(texto.trim());
+    };
+
+    rec.onresult = (e) => {
+      for(let i=e.resultIndex; i<e.results.length; i++) {
+        if(e.results[i].isFinal) texto += e.results[i][0].transcript + ' ';
+      }
+    };
+    rec.onerror = (e) => {
+      if(e.error === 'no-speech' || e.error === 'aborted') return;
+      analysisLog('⚠ Speech: ' + e.error, 'warn');
+    };
+    rec.onend = () => {
+      if(!finished && video.currentTime < state.sourceDuration - 2) {
+        try { rec.start(); } catch(e) {}
+      } else {
+        finish();
+      }
+    };
+
+    video.onended = finish;
+    video.onerror = () => { analysisLog('⚠ Erro ao carregar vídeo para transcrição.', 'warn'); resolve(texto.trim()); };
+
+    // Timeout: no máximo 8min de transcrição (evita travar para vídeos longos)
+    const maxTime = Math.min(state.sourceDuration, 480) * 1000;
+    setTimeout(finish, maxTime + 5000);
+
+    analysisLog('▶ Reproduzindo vídeo para transcrição — aguarde…', 'info');
+    video.play().then(() => {
+      try { rec.start(); } catch(e) {}
+    }).catch(() => {
+      analysisLog('⚠ Autoplay bloqueado. Clique em qualquer lugar da página e tente novamente.', 'warn');
+      resolve('');
+    });
+  });
+}
+
+// ── IA IDENTIFICA SEGMENTOS ──
+async function identificarSegmentosIA(transcricao) {
+  const temInfo = transcricao.length > 50;
+  const canal = state.canal ? `Canal/Podcast: "${state.canal}". ` : '';
+  const tema = state.tema ? `Tema geral: "${state.tema}". ` : '';
+  const durMin = state.minDur;
+  const durMax = state.maxDur;
+  const maxCortes = state.maxCuts;
+
+  let prompt;
+
+  if(temInfo) {
+    prompt = `Você é um especialista em curadoria de conteúdo viral para TikTok. ${canal}${tema}
+
+Duração total do vídeo: ${fmtDur(state.sourceDuration)}.
+
+Transcrição do vídeo (com timestamps aproximados a cada ~30s implícitos na ordem do texto):
+"""
+${transcricao.substring(0, 4000)}
+"""
+
+Identifique até ${maxCortes} trechos do vídeo que sejam interessantes, envolventes e virais — momentos que tenham uma ideia clara, uma história, um insight ou um gancho emocional. NÃO precisa cobrir o vídeo todo — apenas extraia as partes realmente boas.
+
+Regras:
+- Cada trecho deve ter entre ${durMin}s e ${durMax}s de duração
+- Estime start/end em segundos com base na posição do texto na transcrição
+- Cada trecho deve fazer sentido sozinho, ter começo e fim claros
+- Prefira momentos com emoção, revelação, humor, conflito ou ensinamento prático
+- Gere título viral (máx 60 chars), descrição curta (máx 100 chars) e 5 hashtags relevantes ao conteúdo
+
+Responda SOMENTE em JSON (sem markdown, sem explicações):
+{"segmentos":[{"start":0,"end":90,"titulo":"...","descricao":"...","hashtags":["..."],"transcricao":"trecho do texto que corresponde a este segmento"}]}`;
+  } else {
+    // Sem transcrição — usa a duração para dividir inteligentemente
+    prompt = `Você é um especialista em curadoria de conteúdo viral para TikTok. ${canal}${tema}
+
+O vídeo tem ${fmtDur(state.sourceDuration)} de duração. Não foi possível transcrever o áudio.
+
+Crie até ${maxCortes} sugestões de corte para um vídeo de conteúdo misto (entrevista/vlog/podcast), distribuídas ao longo do vídeo. Cada corte deve ter entre ${durMin}s e ${durMax}s. Distribua os cortes de forma inteligente, não linear — prefira o início, meio e momentos-chave.
+
+Para cada corte, gere um título viral genérico mas relacionado ao tema "${state.tema || 'conteúdo'}", uma descrição curta e 5 hashtags.
+
+Responda SOMENTE em JSON:
+{"segmentos":[{"start":0,"end":90,"titulo":"...","descricao":"...","hashtags":["..."]}]}`;
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if(!res.ok) throw new Error('Anthropic API error: ' + res.status);
+  const data = await res.json();
+  const raw = (data.content||[]).map(b=>b.text||'').join('').trim();
+  const jsonStr = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  const parsed = JSON.parse(jsonStr);
+
+  // Valida e corrige os segmentos
+  const dur = state.sourceDuration;
+  return (parsed.segmentos || [])
+    .filter(s => typeof s.start==='number' && typeof s.end==='number')
+    .map(s => ({
+      ...s,
+      start: Math.max(0, Math.round(s.start)),
+      end: Math.min(dur, Math.round(s.end)),
+    }))
+    .filter(s => (s.end - s.start) >= durMin && (s.end - s.start) <= durMax + 60)
+    .slice(0, maxCortes);
+}
+
+// ══════════════════════════════════════════════════════
+// FFMPEG
+// ══════════════════════════════════════════════════════
+async function initFFmpeg() {
+  try {
+    if(typeof FFmpeg === 'undefined') { state.ffmpegLoaded = false; return; }
+    state.ffmpeg = new FFmpeg();
+    await state.ffmpeg.load({ coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js' });
+    state.ffmpegLoaded = true;
+  } catch(e) {
+    state.ffmpegLoaded = false;
+  }
+}
+
+async function cutWithFFmpeg(start, duration, idx) {
+  const ff = state.ffmpeg;
+  const inName = `in_${idx}.mp4`, outName = `out_${idx}.mp4`;
+  await ff.writeFile(inName, await fetchFile(state.sourceFile));
+  await ff.exec(['-ss', String(start), '-i', inName, '-t', String(duration), '-c', 'copy', '-movflags', '+faststart', outName]);
+  const data = await ff.readFile(outName);
+  const blob = new Blob([data.buffer], { type:'video/mp4' });
+  await ff.deleteFile(inName); await ff.deleteFile(outName);
+  return URL.createObjectURL(blob);
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 3: SEGMENTS GRID + DRAWER
+// ══════════════════════════════════════════════════════
+function renderSegmentsGrid() {
+  const grid = document.getElementById('segments-grid');
+  grid.innerHTML = '';
+  const total = state.segments.length;
+  const prontos = state.segments.filter(s=>s.status==='pronto').length;
+  const legendados = state.segments.filter(s=>s.transcricao&&s.transcricao.length>10).length;
+  const durTotal = state.segments.reduce((a,s)=>a+s.duracao,0);
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-ready').textContent = prontos;
+  document.getElementById('stat-sub').textContent = legendados;
+  document.getElementById('stat-dur').textContent = Math.round(durTotal/60)+'m';
+
+  state.segments.forEach(seg => {
+    const hasVideo = seg.blobUrl && seg.blobUrl !== state.sourceUrl;
+    const card = document.createElement('div');
+    card.className = 'seg-card' + (seg.status==='pronto' ? ' done' : '');
+    card.innerHTML = `
+      <div class="seg-thumb">
+        ${hasVideo ? `<video src="${seg.blobUrl}" muted preload="metadata"></video>` : ''}
+        <div class="seg-thumb-overlay">
+          <div class="seg-num">${String(seg.num).padStart(2,'0')}</div>
+          <div class="seg-dur">${fmtDur(seg.duracao)}</div>
+        </div>
+        <div class="seg-status-badge ${seg.status}">${seg.status}</div>
+      </div>
+      <div class="seg-body">
+        <div class="seg-title">${seg.titulo || 'Sem título'}</div>
+        <div class="seg-meta">${fmtDur(seg.start)} → ${fmtDur(seg.end)}</div>
+      </div>`;
+    card.onclick = () => openDrawer(seg.id);
+    grid.appendChild(card);
+  });
+
+  if(total === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:13px;">Nenhum corte ainda. Volte e analise um vídeo.</div>';
+  }
+}
+
+function openDrawer(id) {
+  state.activeSegId = id;
+  const seg = state.segments.find(s=>s.id===id);
+  if(!seg) return;
+  document.getElementById('drawer-title').textContent = `Corte ${String(seg.num).padStart(2,'0')}`;
+  document.getElementById('drawer-bg').classList.add('open');
+  renderDrawerBody(seg);
+}
+
+function renderDrawerBody(seg) {
+  pararLegendas();
+  const hasBlobReal = seg.blobUrl && seg.blobUrl !== state.sourceUrl;
+  const hasSource = !!state.sourceUrl;
+  const temTranscricao = seg.transcricao && seg.transcricao.length > 10;
+
+  let videoHtml;
+  if(hasBlobReal) {
+    videoHtml = `<video id="preview-video" src="${seg.blobUrl}" controls style="width:100%;height:100%;object-fit:contain;"></video>`;
+  } else if(hasSource) {
+    videoHtml = `
+      <video id="preview-video" src="${state.sourceUrl}" controls style="width:100%;height:100%;object-fit:contain;" preload="metadata"></video>
+      <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:6px;">
+        <button onclick="seekPreview(${seg.start})" style="flex:1;background:rgba(0,0,0,0.75);color:white;border:none;border-radius:6px;padding:5px 8px;font-size:10px;cursor:pointer;">▶ ${fmtDur(seg.start)}</button>
+        <button onclick="seekPreview(${seg.end-5})" style="flex:1;background:rgba(0,0,0,0.75);color:white;border:none;border-radius:6px;padding:5px 8px;font-size:10px;cursor:pointer;">⏭ ${fmtDur(seg.end)}</button>
+      </div>`;
+  } else {
+    videoHtml = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;color:var(--muted);">
+      <div style="font-size:32px;font-family:var(--mono);font-weight:500;">${String(seg.num).padStart(2,'0')}</div>
+      <div style="font-size:12px;">${fmtDur(seg.duracao)}</div></div>`;
+  }
+
+  document.getElementById('drawer-body').innerHTML = `
+    <div class="preview-wrap">
+      ${videoHtml}
+      <div class="subtitle-overlay" id="sub-overlay">
+        <span class="subtitle-text" id="sub-text"></span>
+      </div>
+    </div>
+
+    <!-- TRANSCRIÇÃO / LEGENDAS -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);">
+          Transcrição ${temTranscricao?'✓':''}
+        </span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${(hasSource||hasBlobReal) ? `
+            <button id="btn-transcrever" class="btn sm ghost" onclick="transcreverCorte(${seg.id})">
+              ${temTranscricao ? '↺ Retranscrever' : '🎙 Transcrever'}
+            </button>` : ''}
+          ${temTranscricao ? `
+            <button id="btn-legendas" class="btn sm ghost" onclick="toggleLegendas(${seg.id})">📺 Legendas</button>
+            <button class="btn sm primary" onclick="gerarTituloIA(${seg.id})">✦ Gerar título</button>
+            ${seg.srt ? `<button class="btn sm ghost" onclick="exportarSRT(${seg.id})">↓ .srt</button>` : ''}
+          ` : `<button class="btn sm primary" onclick="gerarTituloIA(${seg.id})">✦ Gerar título</button>`}
+        </div>
+      </div>
+      <div id="transcricao-box" style="background:var(--surface2);border-radius:var(--r);padding:10px 12px;font-size:11.5px;line-height:1.7;color:var(--muted);min-height:48px;font-family:var(--mono);white-space:pre-wrap;word-break:break-word;max-height:120px;overflow-y:auto;">
+        ${temTranscricao ? seg.transcricao : 'Clique em "Transcrever" para gerar a transcrição deste corte.'}
+      </div>
+    </div>
+
+    <!-- METADADOS -->
+    <div class="field"><label>Título</label><textarea id="d-titulo" rows="2">${seg.titulo}</textarea></div>
+    <div class="field"><label>Descrição</label><input type="text" id="d-desc" value="${seg.descricao}" placeholder="Frase de apoio curta…"></div>
+    <div class="field">
+      <label>Hashtags</label>
+      <div class="tag-cloud">${seg.hashtags.map(h=>`<button class="tag-chip" onclick="removeTag('${h}')">#${h} ✕</button>`).join('')}</div>
+      <input type="text" id="d-tags" value="${seg.hashtags.join(', ')}" placeholder="tag1, tag2, tag3" style="margin-top:6px;">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="d-status">
+        <option value="pendente" ${seg.status==='pendente'?'selected':''}>Pendente</option>
+        <option value="legendado" ${seg.status==='legendado'?'selected':''}>Legendado</option>
+        <option value="pronto" ${seg.status==='pronto'?'selected':''}>Pronto para publicar</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">${fmtDur(seg.start)} → ${fmtDur(seg.end)} · ${fmtDur(seg.duracao)}</div>
+  `;
+
+  // Auto-seek no vídeo
+  setTimeout(() => {
+    const v = document.getElementById('preview-video');
+    if(v && hasSource && !hasBlobReal) {
+      if(v.readyState >= 1) v.currentTime = seg.start;
+      else v.onloadedmetadata = () => { v.currentTime = seg.start; };
+    }
+  }, 80);
+}
+
+function seekPreview(t) {
+  const v = document.getElementById('preview-video');
+  if(v) { v.currentTime = Math.max(0,t); v.play(); }
+}
+
+function removeTag(tag) {
+  const seg = state.segments.find(s=>s.id===state.activeSegId);
+  if(!seg) return;
+  seg.hashtags = seg.hashtags.filter(h=>h!==tag);
+  renderDrawerBody(seg);
+}
+
+async function saveDrawer() {
+  const seg = state.segments.find(s=>s.id===state.activeSegId);
+  if(!seg) return;
+  seg.titulo = document.getElementById('d-titulo').value;
+  seg.descricao = document.getElementById('d-desc').value;
+  seg.hashtags = document.getElementById('d-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  seg.status = document.getElementById('d-status').value;
+  renderSegmentsGrid();
+  renderDrawerBody(seg);
+  toast('Salvo!', 'ok');
+}
+
+function closeDrawer() {
+  pararLegendas();
+  document.getElementById('drawer-bg').classList.remove('open');
+  state.activeSegId = null;
+}
+
+async function approveAndNext() {
+  await saveDrawer();
+  const seg = state.segments.find(s=>s.id===state.activeSegId);
+  if(seg && seg.status==='pendente') { seg.status='pronto'; }
+  const idx = state.segments.findIndex(s=>s.id===state.activeSegId);
+  if(idx < state.segments.length-1) {
+    const next = state.segments[idx+1];
+    state.activeSegId = next.id;
+    document.getElementById('drawer-title').textContent = `Corte ${String(next.num).padStart(2,'0')}`;
+    renderDrawerBody(next);
+  } else {
+    closeDrawer();
+    toast('Todos os cortes revisados!', 'ok');
+  }
+  renderSegmentsGrid();
+}
+
+function navigateSeg(dir) {
+  const idx = state.segments.findIndex(s=>s.id===state.activeSegId);
+  const next = idx+dir;
+  if(next>=0 && next<state.segments.length) {
+    const seg = state.segments[next];
+    state.activeSegId = seg.id;
+    document.getElementById('drawer-title').textContent = `Corte ${String(seg.num).padStart(2,'0')}`;
+    renderDrawerBody(seg);
+  }
+}
+
+// ── GERAÇÃO DE TÍTULO VIA IA ──
+async function gerarTituloIA(segId) {
+  const seg = state.segments.find(s=>s.id===segId);
+  if(!seg) return;
+
+  const btn = document.getElementById('ai-gen-btn') || document.querySelector(`[onclick="gerarTituloIA(${segId})"]`);
+  if(btn) { btn.disabled=true; btn.textContent='⏳ Gerando…'; }
+
+  const canal = state.canal ? `Canal: "${state.canal}". ` : '';
+  const tema = state.tema ? `Tema: "${state.tema}". ` : '';
+  const transcricao = seg.transcricao ? `\nTranscrição do trecho:\n"""\n${seg.transcricao.substring(0,1200)}\n"""` : '';
+
+  const prompt = `Você é especialista em conteúdo viral para TikTok. ${canal}${tema}
+Duração do corte: ${Math.round(seg.duracao)}s.${transcricao}
+
+Gere título viral (máx 60 chars), descrição (máx 100 chars) e 6 hashtags sem # relevantes.
+${seg.transcricao ? 'Use APENAS o conteúdo real da transcrição.' : 'Use o tema geral.'}
+
+Responda SOMENTE em JSON:
+{"titulo":"...","descricao":"...","hashtags":["...","...","...","...","...","..."]}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:300, messages:[{role:'user',content:prompt}] }),
+    });
+    if(!res.ok) throw new Error('API '+res.status);
+    const data = await res.json();
+    const raw = (data.content||[]).map(b=>b.text||'').join('').trim();
+    const parsed = JSON.parse(raw.replace(/^```json\s*/,'').replace(/```\s*$/,'').trim());
+    seg.titulo = parsed.titulo || seg.titulo;
+    seg.descricao = parsed.descricao || seg.descricao;
+    seg.hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0,8) : seg.hashtags;
+    const hashCanal = (state.canal||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+    if(hashCanal && !seg.hashtags.includes(hashCanal)) seg.hashtags = [hashCanal,...seg.hashtags].slice(0,8);
+    renderDrawerBody(seg);
+    renderSegmentsGrid();
+    toast('Título gerado!', 'ok');
+  } catch(e) {
+    toast('Erro na IA — tente novamente.', 'err');
+  } finally {
+    const btn2 = document.querySelector(`[onclick="gerarTituloIA(${segId})"]`);
+    if(btn2) { btn2.disabled=false; btn2.textContent='✦ Gerar título'; }
+  }
+}
+
+async function gerarTodosTitulos() {
+  const pendentes = state.segments.filter(s=>!s.titulo);
+  if(!pendentes.length) { toast('Todos já têm título.', 'ok'); return; }
+  for(const seg of pendentes) await gerarTituloIA(seg.id);
+}
+
+// ── TRANSCRIÇÃO DE CORTE INDIVIDUAL ──
+let speechRec = null, transcAtiva = false;
+
+function browserSuportaSpeech() { return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window; }
+
+async function transcreverCorte(segId) {
+  const seg = state.segments.find(s=>s.id===segId);
+  if(!seg) return;
+  if(!browserSuportaSpeech()) { toast('Transcrição requer Chrome ou Edge.', 'err'); return; }
+  if(!state.sourceUrl && !seg.blobUrl) { toast('Sem vídeo carregado.', 'err'); return; }
+  if(transcAtiva) pararTranscricao();
+
+  const btn = document.getElementById('btn-transcrever');
+  const box = document.getElementById('transcricao-box');
+  if(btn) { btn.textContent='⏹ Parar'; btn.onclick=()=>pararTranscricao(); }
+  if(box) { box.textContent='🎙 Ouvindo…'; box.style.color='var(--accent)'; }
+
+  const video = document.getElementById('preview-video');
+  if(video) { video.currentTime=seg.start; video.muted=false; video.volume=1; }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  speechRec = new SR();
+  speechRec.lang='pt-BR'; speechRec.continuous=true; speechRec.interimResults=true;
+
+  let textoFinal='', textoInterim='';
+  const palavras=[];
+  const t0 = Date.now();
+
+  speechRec.onresult=(e)=>{
+    textoInterim='';
+    for(let i=e.resultIndex;i<e.results.length;i++) {
+      if(e.results[i].isFinal) {
+        const t=e.results[i][0].transcript;
+        const tOff=(Date.now()-t0)/1000;
+        textoFinal+=t+' ';
+        palavras.push({ text:t.trim(), start:seg.start+Math.max(0,tOff-t.split(' ').length*0.4), end:seg.start+tOff });
+      } else { textoInterim+=e.results[i][0].transcript; }
+    }
+    if(box) { box.textContent=textoFinal+(textoInterim?`[${textoInterim}]`:''); box.style.color='var(--text)'; }
+  };
+  speechRec.onerror=(e)=>{ if(e.error==='no-speech'||e.error==='aborted') return; if(e.error==='not-allowed') { toast('Permita o microfone no Chrome.', 'err'); pararTranscricao(); } };
+  speechRec.onend=()=>{ if(transcAtiva && video && video.currentTime<seg.end) { try{speechRec.start();}catch(e){} } else { finalizarTranscricao(seg,textoFinal,palavras); } };
+
+  if(video) {
+    video.ontimeupdate=()=>{ if(video.currentTime>=seg.end) { video.pause(); pararTranscricao(); finalizarTranscricao(seg,textoFinal,palavras); } };
+    video.play().catch(()=>toast('Clique no vídeo para iniciar o áudio.','err'));
+  }
+
+  transcAtiva=true;
+  try { speechRec.start(); } catch(e) {}
+}
+
+function pararTranscricao() {
+  transcAtiva=false;
+  if(speechRec) { try{speechRec.stop();}catch(e){} }
+  const video=document.getElementById('preview-video');
+  if(video) { video.pause(); video.ontimeupdate=null; }
+  const btn=document.getElementById('btn-transcrever');
+  if(btn) { btn.textContent='↺ Retranscrever'; btn.onclick=()=>{ const s=state.segments.find(x=>x.id===state.activeSegId); if(s) transcreverCorte(s.id); }; }
+}
+
+function finalizarTranscricao(seg, texto, palavras) {
+  transcAtiva=false;
+  seg.transcricao=texto.trim();
+  seg.srt=gerarSRT(palavras);
+  if(seg.transcricao.length>10) seg.status='legendado';
+  const box=document.getElementById('transcricao-box');
+  if(box) { box.textContent=seg.transcricao||'(nenhuma fala detectada)'; box.style.color='var(--text)'; }
+  renderDrawerBody(seg);
+  renderSegmentsGrid();
+  toast('Transcrição concluída!', 'ok');
+}
+
+// ── SRT ──
+function gerarSRT(palavras) {
+  if(!palavras||!palavras.length) return '';
+  return palavras.map((p,i)=>`${i+1}\n${srtTime(p.start)} --> ${srtTime(p.end)}\n${p.text}\n`).join('\n');
+}
+function srtTime(s) {
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60),ms=Math.round((s%1)*1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+}
+function exportarSRT(segId) {
+  const seg=state.segments.find(s=>s.id===segId);
+  if(!seg||!seg.srt) { toast('Transcreva o corte primeiro.', 'err'); return; }
+  const blob=new Blob([seg.srt],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`corte_${String(seg.num).padStart(2,'0')}.srt`; a.click();
+  toast('.srt exportado!', 'ok');
+}
+
+// ── LEGENDAS NO VÍDEO ──
+function toggleLegendas(segId) {
+  const seg=state.segments.find(s=>s.id===segId);
+  if(!seg) return;
+  const btn=document.getElementById('btn-legendas');
+  if(state.legendasAtivas) {
+    pararLegendas();
+    if(btn) { btn.textContent='📺 Legendas'; btn.classList.remove('primary'); btn.classList.add('ghost'); }
+  } else {
+    const overlay=document.getElementById('sub-overlay');
+    if(!overlay) return;
+    state.legendasAtivas=true;
+    if(btn) { btn.textContent='🙈 Ocultar'; btn.classList.add('primary'); btn.classList.remove('ghost'); }
+    const blocks=buildLegendaBlocks(seg);
+    iniciarLegendas(blocks);
+  }
+}
+
+function pararLegendas() {
+  state.legendasAtivas=false;
+  if(state.legendaRafId) { cancelAnimationFrame(state.legendaRafId); state.legendaRafId=null; }
+  const overlay=document.getElementById('sub-overlay');
+  if(overlay) overlay.style.display='none';
+}
+
+function buildLegendaBlocks(seg) {
+  if(seg.srt && seg.srt.trim()) return parseSRT(seg.srt);
+  const words=(seg.transcricao||'').trim().split(/\s+/).filter(Boolean);
+  const chunkSize=8, numChunks=Math.ceil(words.length/chunkSize);
+  return Array.from({length:numChunks},(_,i)=>({
+    start: seg.start+(i/numChunks)*seg.duracao,
+    end: seg.start+((i+1)/numChunks)*seg.duracao,
+    text: words.slice(i*chunkSize,(i+1)*chunkSize).join(' '),
+  }));
+}
+
+function parseSRT(srt) {
+  return srt.trim().split(/\n\n+/).map(entry=>{
+    const lines=entry.trim().split('\n');
+    if(lines.length<3) return null;
+    const m=lines[1].match(/(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/);
+    if(!m) return null;
+    return { start:+m[1]*3600+(+m[2])*60+(+m[3])+(+m[4])/1000, end:+m[5]*3600+(+m[6])*60+(+m[7])+(+m[8])/1000, text:lines.slice(2).join(' ') };
+  }).filter(Boolean);
+}
+
+function iniciarLegendas(blocks) {
+  const video=document.getElementById('preview-video');
+  const textEl=document.getElementById('sub-text');
+  const overlay=document.getElementById('sub-overlay');
+  if(!video||!textEl||!overlay) return;
+
+  function tick() {
+    if(!state.legendasAtivas) return;
+    const t=video.currentTime;
+    const ativo=blocks.find(b=>t>=b.start&&t<b.end);
+    if(ativo&&ativo.text) { textEl.textContent=ativo.text; overlay.style.display='block'; }
+    else { overlay.style.display='none'; }
+    state.legendaRafId=requestAnimationFrame(tick);
+  }
+  state.legendaRafId=requestAnimationFrame(tick);
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 4: PUBLISH
+// ══════════════════════════════════════════════════════
+function renderPublishQueue() {
+  const prontos = state.segments.filter(s=>s.status==='pronto'||s.status==='legendado');
+  document.getElementById('pub-total').textContent = prontos.length;
+  document.getElementById('pub-done').textContent = state.segments.filter(s=>s.publicado).length;
+  document.getElementById('pub-pending').textContent = prontos.filter(s=>!s.publicado).length;
+  document.getElementById('pub-dur').textContent = Math.round(prontos.reduce((a,s)=>a+s.duracao,0)/60)+'m';
+
+  const tbody = document.getElementById('pub-body');
+  tbody.innerHTML = '';
+
+  if(prontos.length===0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">Nenhum corte pronto. Volte e marque os cortes como "Pronto para publicar".</td></tr>';
+    return;
+  }
+
+  prontos.forEach((seg,i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono" style="color:var(--muted);">${String(seg.num).padStart(2,'0')}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${seg.titulo}">${seg.titulo||'Sem título'}</td>
+      <td class="mono" style="color:var(--muted);">${fmtDur(seg.duracao)}</td>
+      <td><span style="font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:20px;background:${seg.publicado?'var(--green-bg)':'var(--surface2)'};color:${seg.publicado?'var(--green)':'var(--muted)'};">${seg.publicado?'publicado':'pendente'}</span></td>
+      <td style="text-align:right;">
+        <button class="btn sm primary" onclick="abrirTikTok(${seg.id})" ${seg.publicado?'style="opacity:0.5;"':''}>
+          ${seg.publicado ? '↺ Repostar' : '▶ Abrir no TikTok'}
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function abrirTikTok(segId) {
+  const seg = state.segments.find(s=>s.id===segId);
+  if(!seg) return;
+
+  // 1. Monta o texto para copiar
+  const caption = [
+    seg.titulo,
+    '',
+    seg.descricao,
+    '',
+    seg.hashtags.map(h=>'#'+h).join(' '),
+  ].filter(l=>l!==undefined).join('\n');
+
+  // 2. Copia para clipboard
+  try {
+    await navigator.clipboard.writeText(caption);
+    toast('Título e hashtags copiados! Cole no TikTok.', 'ok');
+  } catch(e) {
+    toast('Copie manualmente: ' + seg.titulo, 'info');
+  }
+
+  // 3. Baixa o vídeo se tiver blob real
+  if(seg.blobUrl && seg.blobUrl !== state.sourceUrl) {
+    const a = document.createElement('a');
+    a.href = seg.blobUrl;
+    a.download = `corte_${String(seg.num).padStart(2,'0')}_${(seg.titulo||'sem_titulo').substring(0,30).replace(/[^a-z0-9]/gi,'_')}.mp4`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else {
+    toast('O corte usa o vídeo original — baixe-o manualmente para postar.', 'info');
+  }
+
+  // 4. Abre TikTok Studio
+  setTimeout(() => {
+    window.open('https://www.tiktok.com/upload', '_blank');
+  }, 600);
+
+  // 5. Marca como publicado
+  seg.publicado = true;
+  renderPublishQueue();
+}
+
+async function exportarZip() {
+  toast('Exportação ZIP em desenvolvimento. Use o botão "Abrir no TikTok" por corte.', 'info');
+}
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+function fmtDur(s) { const t=Math.max(0,Math.round(s)),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),ss=t%60; return h?`${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`:`${m}:${String(ss).padStart(2,'0')}`; }
+function fmtSize(b) { return b>1e9?(b/1e9).toFixed(1)+'GB':b>1e6?(b/1e6).toFixed(1)+'MB':(b/1e3).toFixed(0)+'KB'; }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function toast(msg, type='ok') {
+  const wrap=document.getElementById('toast-wrap');
+  const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg;
+  wrap.appendChild(t); setTimeout(()=>t.remove(),3800);
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') closeDrawer();
+});
+</script>
+</body>
+</html>
